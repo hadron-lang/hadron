@@ -1,0 +1,164 @@
+#ifndef __LANG_TOKENIZER_H
+#define __LANG_TOKENIZER_H 1
+
+#include <string.h>
+
+#include "util/string.h"
+#include "util/bool.h"
+#include "types.h"
+
+#pragma region definitions
+
+char next();
+char peekNext();
+char peekPrev();
+char current();
+void initTokenizer(string code);
+void addToken(Type type);
+bool match(char c);
+bool end();
+bool start();
+bool isAlpha(char c);
+bool isNumber(char c);
+
+Tokenizer tokenizer;
+
+#pragma endregion
+
+void initTokenizer(string code) {
+	tokenizer.code = code;
+	tokenizer.len = strlen(code);
+	tokenizer.iterator = -1;
+	tokenizer.tokenStart = 0;
+	tokenizer.line = 1;
+	TArray tokens;
+	initTArray(&tokens);
+	tokenizer.tokens = tokens;
+}
+
+TArray* tokenize(string code) {
+	initTokenizer(code);
+	while (!end()) {
+		tokenizer.tokenStart = tokenizer.iterator+1;
+		char c = next();
+		switch (c) {
+			case '@': addToken(AT); continue;
+			case '.': addToken(CHAIN); continue;
+			case ',': addToken(SEP); continue;
+			case ';': addToken(DELMT); continue;
+			case '\0': addToken(_EOF); continue;
+			case '+': {
+				if (match('=')) addToken(ADD_EQ);
+				else if (match('+')) addToken(INCR);
+				else addToken(ADD);
+				continue;
+			} case '-': {
+				if (match('=')) addToken(SUB_EQ);
+				else if (match('-')) addToken(DECR);
+				else addToken(SUB);
+				continue;
+			} case '*': {
+				if (match('=')) addToken(MUL_EQ);
+				else if (match('=')) addToken(POW);
+				else addToken(MUL);
+				continue;
+			} case '|': {
+				if (match('|')) {
+					if (match('=')) addToken(LOR_EQ);
+					else addToken(LOR);
+				} else if (match('=')) addToken(BOR_EQ);
+				else addToken(BOR);
+				continue;
+			} case '&': {
+				if (match('&')) {
+					if (match('=')) addToken(LAND_EQ);
+					else addToken(LAND);
+				} else if (match('=')) addToken(BAND_EQ);
+				else addToken(BAND);
+				continue;
+			} case '~': {
+				if (match('=')) addToken(BNOT_EQ);
+				else addToken(BNOT);
+				continue;
+			} case '^': {
+				if (match('=')) addToken(BXOR_EQ);
+				else addToken(BXOR);
+				continue;
+			} case '/': {
+				if (match('/')) while (peekNext() != '\n' && !end()) {
+					next();
+				} else addToken(DIV); continue;
+			} case '=': {
+				if (match('=')) addToken(CMP_EQ);
+				else addToken(EQ); continue;
+			} case '>': {
+				if (match('>')) {
+					if (match('=')) addToken(RSHIFT_EQ);
+					else addToken(RSHIFT);
+				} else if (match('=')) addToken(CMP_GEQ);
+				else addToken(CMP_GT); continue;
+			} case '<': {
+				if (match('>')) {
+					if (match('=')) addToken(LSHIFT_EQ);
+					else addToken(LSHIFT);
+				} else if (match('=')) addToken(CMP_LEQ);
+				else addToken(CMP_LT); continue;
+			} case '%': {
+				if (match('=')) addToken(REM_EQ);
+				else addToken(REM);
+			} case '"': {
+				while (peekNext() != '"') {
+					next();
+				}; next(); addToken(STR); continue;
+			} default: {
+				if (match('0')) {
+					char base = next();
+					if (base == 'o') {
+						while (isNumber(peekNext())) { next(); }
+					}
+				}
+				if (isNumber(peekNext())) {
+					while (isNumber(peekNext())) next();
+					addToken(DEC);
+				}
+				if (isAlpha(peekNext())) {
+					while (isAlpha(peekNext()) || isNumber(peekNext())) next();
+					addToken(NAME);
+				}
+			};
+		}
+	}
+	return &tokenizer.tokens;
+}
+
+void addToken(Type type) {
+	Token token;
+	token.type = type;
+	token.line = tokenizer.line;
+	token.start = tokenizer.tokenStart;
+	token.end = tokenizer.iterator;
+	pushToken(&(tokenizer.tokens), token);
+};
+char peekNext() {
+	if (!end()) return tokenizer.code[tokenizer.iterator+1];
+	else return '\0';
+}
+char peekPrev() {
+	if (!start()) return tokenizer.code[tokenizer.iterator-1];
+	else return '\0';
+}
+char next() {
+	if (!end()) return tokenizer.code[++tokenizer.iterator];
+	else return '\0';
+}
+char current() { return tokenizer.code[tokenizer.iterator]; }
+bool end() { return tokenizer.iterator > tokenizer.len-1; }
+bool start() { return tokenizer.iterator < 1; }
+bool match(char c) {
+	if (peekNext() == c) { next(); return true; }
+	else return false;
+}
+bool isNumber(char c) { return c >= '0' && c <= '9'; }
+bool isAlpha(char c) { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '$'; }
+
+#endif
