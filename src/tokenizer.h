@@ -36,7 +36,7 @@ void initTokenizer(string code) {
 	tokenizer.tokens = tokens;
 }
 
-TArray* tokenize(string code) {
+TArray *tokenize(string code) {
 	initTokenizer(code);
 	while (!end()) {
 		tokenizer.tokenStart = tokenizer.iterator+1;

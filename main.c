@@ -37,7 +37,7 @@ int main(small argc, string argv[]) {
 	if (args.mode && !args.file) return CLIError(1, "you should provide at least one file to compile");
 	if (args.mode && !args.lang) return CLIError(1, "you should choose one language to compile to");
 
-	FILE* fp = fopen(args.file, "r");
+	FILE *fp = fopen(args.file, "r");
 	if (fp == NULL) {
 		string err1 = "file\x1b[97m ";
 		string err = malloc(strlen(err1) + strlen(args.file));
@@ -57,7 +57,7 @@ int main(small argc, string argv[]) {
 
 	fclose(fp);
 
-	TArray* t = tokenize(contents);
+	TArray *t = tokenize(contents);
 	printTokens(contents, t);
 
 	free(contents);

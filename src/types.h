@@ -98,7 +98,7 @@ typedef struct Token {
 
 typedef struct TArray {
 	int length;
-	Token* array;
+	Token *array;
 } TArray;
 
 typedef struct Tokenizer {
@@ -110,19 +110,19 @@ typedef struct Tokenizer {
 	string code;
 } Tokenizer;
 
-void initTArray(TArray* arr) {
-	arr->array = malloc(0);
-	arr->length = 0;
+void initTArray(TArray *ptr) {
+	ptr->array = malloc(0);
+	ptr->length = 0;
 }
 
-void pushToken(TArray* arr, Token token) {
-	arr->array = realloc(arr->array, sizeof(Token) * (arr->length+1));
-	arr->array[arr->length] = token;
-	arr->length++;
+void pushToken(TArray *ptr, Token token) {
+	ptr->array = realloc(ptr->array, sizeof(Token) * (ptr->length+1));
+	ptr->array[ptr->length] = token;
+	ptr->length++;
 }
 
-void freeTArray(TArray* arr) {
-	free(arr->array);
+void freeTArray(TArray *ptr) {
+	free(ptr->array);
 }
 
 #endif

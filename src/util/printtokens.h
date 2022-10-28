@@ -1,6 +1,6 @@
 #include "../types.h"
 
-void printTokens(string code, TArray* tokens) {
+void printTokens(string code, TArray *tokens) {
 	for (int i = 0; i < tokens->length; i++) {
 		string type;
 		int len = tokens->array[i].end - tokens->array[i].start;
