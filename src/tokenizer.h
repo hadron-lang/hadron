@@ -38,9 +38,10 @@ void initTokenizer(string code) {
 
 TArray *tokenize(string code) {
 	initTokenizer(code);
+	char c;
 	while (!end()) {
-		tokenizer.tokenStart = tokenizer.iterator+1;
-		char c = next();
+		c = next();
+		tokenizer.tokenStart = tokenizer.iterator;
 		switch (c) {
 			case '@': addToken(AT); continue;
 			case '.': addToken(CHAIN); continue;
@@ -117,14 +118,31 @@ TArray *tokenize(string code) {
 						while (isNumber(peekNext())) { next(); }
 					}
 				}
-				if (isNumber(peekNext())) {
+				if (isNumber(current())) {
 					while (isNumber(peekNext())) next();
 					addToken(DEC);
 				}
-				if (isAlpha(peekNext())) {
+				if (isAlpha(current())) {
 					while (isAlpha(peekNext()) || isNumber(peekNext())) next();
-					addToken(NAME);
-				}
+					int len = tokenizer.iterator+1 - tokenizer.tokenStart;
+					string substr = malloc(len+1);
+					memcpy(substr, &code[tokenizer.tokenStart], len);
+					substr[len] = '\0';
+					if (!strcmp(substr, "for")) { addToken(FOR); free(substr); continue; }
+					if (!strcmp(substr, "class")) { addToken(CLASS); free(substr); continue; }
+					if (!strcmp(substr, "func")) { addToken(FUNC); free(substr); continue; }
+					if (!strcmp(substr, "true")) { addToken(TRUE); free(substr); continue; }
+					if (!strcmp(substr, "false")) { addToken(FALSE); free(substr); continue; }
+					if (!strcmp(substr, "null")) { addToken(_NULL); free(substr); continue; }
+					if (!strcmp(substr, "while")) { addToken(WHILE); free(substr); continue; }
+					if (!strcmp(substr, "if")) { addToken(IF); free(substr); continue; }
+					if (!strcmp(substr, "do")) { addToken(DO); free(substr); continue; }
+					if (!strcmp(substr, "else")) { addToken(ELSE); free(substr); continue; }
+					if (!strcmp(substr, "from")) { addToken(FROM); free(substr); continue; }
+					if (!strcmp(substr, "import")) { addToken(IMPORT); free(substr); continue; }
+					if (!strcmp(substr, "new")) { addToken(NEW); free(substr); continue; }
+					addToken(NAME); free(substr);
+				}; continue;
 			};
 		}
 	}
@@ -136,7 +154,7 @@ void addToken(Type type) {
 	token.type = type;
 	token.line = tokenizer.line;
 	token.start = tokenizer.tokenStart;
-	token.end = tokenizer.iterator;
+	token.end = tokenizer.iterator+1;
 	pushToken(&(tokenizer.tokens), token);
 };
 char peekNext() {

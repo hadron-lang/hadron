@@ -10,7 +10,7 @@
 typedef enum Types {
 	// COMPARE
 
-	CMP_EQ = 1, //* ==
+	CMP_EQ = 10, //* ==
 	CMP_GT,     //* >
 	CMP_LT,     //* <
 	CMP_NEQ,    //* !=
