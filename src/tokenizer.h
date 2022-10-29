@@ -86,9 +86,9 @@ TArray *tokenize(string code) {
 				else addToken(BXOR);
 				continue;
 			} case '/': {
-				if (match('/')) while (peekNext() != '\n' && !end()) {
-					next();
-				} else addToken(DIV); continue;
+				if (match('/')) while (peekNext() != '\n' && !end()) next();
+				else if (match('*')) while (!(next() == '*' && next() == '/') && !end());
+				else addToken(DIV); continue;
 			} case '=': {
 				if (match('=')) addToken(CMP_EQ);
 				else addToken(EQ); continue;
