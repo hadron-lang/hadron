@@ -11,7 +11,7 @@ run:
 debug:
 	@clear
 	@gcc -o debug.bin -ggdb main.c
-	@gdb -ex=run\ index.idk -ex=quit --silent ./debug.bin
+	@gdb -ex=r\ index.idk -ex=set\ confirm\ off -ex=q --silent ./debug.bin
 clean:
 	@clear
 	@rm debug.bin
