@@ -49,7 +49,7 @@ typedef enum Types {
 	FROM,
 	IMPORT,
 	NEW,
-	_EOF,     //* \0
+	AWAIT,
 	// TYPE
 
 	STR,      //* "hello world"
@@ -70,6 +70,7 @@ typedef enum Types {
 	OCTAL,    //* 0o77
 	BIN,      //* 0b1111
 	COLON,    //* :
+	_EOF,     //* \0
 	// OPERATION
 
 	ADD,    //* +

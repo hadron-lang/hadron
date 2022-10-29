@@ -141,6 +141,7 @@ TArray *tokenize(string code) {
 					if (!strcmp(substr, "from")) { addToken(FROM); free(substr); continue; }
 					if (!strcmp(substr, "import")) { addToken(IMPORT); free(substr); continue; }
 					if (!strcmp(substr, "new")) { addToken(NEW); free(substr); continue; }
+					if (!strcmp(substr, "await")) { addToken(AWAIT); free(substr); continue; }
 					addToken(NAME); free(substr);
 				}; continue;
 			};
