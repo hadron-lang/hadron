@@ -19,7 +19,10 @@ bool match(char c);
 bool end();
 bool start();
 bool isAlpha(char c);
-bool isNumber(char c);
+bool isDec(char c);
+bool isBin(char c);
+bool isOct(char c);
+bool isHex(char c);
 
 Tokenizer tokenizer;
 
@@ -115,15 +118,19 @@ TArray *tokenize(string code) {
 				if (match('0')) {
 					char base = next();
 					if (base == 'o') {
-						while (isNumber(peekNext())) { next(); }
+						while (isOct(peekNext())) { next(); }
+					} else if (base == 'b') {
+						while (isBin(peekNext())) { next(); }
+					} else if (base == 'x') {
+						while (isHex(peekNext())) { next(); }
 					}
 				}
-				if (isNumber(current())) {
-					while (isNumber(peekNext())) next();
+				if (isDec(current())) {
+					while (isDec(peekNext())) next();
 					addToken(DEC);
 				}
 				if (isAlpha(current())) {
-					while (isAlpha(peekNext()) || isNumber(peekNext())) next();
+					while (isAlpha(peekNext()) || isDec(peekNext())) next();
 					int len = tokenizer.iterator+1 - tokenizer.tokenStart;
 					string substr = malloc(len+1);
 					memcpy(substr, &code[tokenizer.tokenStart], len);
@@ -177,7 +184,10 @@ bool match(char c) {
 	if (peekNext() == c) { next(); return true; }
 	else return false;
 }
-bool isNumber(char c) { return c >= '0' && c <= '9'; }
+bool isDec(char c) { return c >= '0' && c <= '9'; }
+bool isBin(char c) { return c == '0' ||  c == '1'; }
+bool isOct(char c) { return c >= '0' && c <= '7';}
+bool isHex(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 bool isAlpha(char c) { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '$'; }
 
 #endif
