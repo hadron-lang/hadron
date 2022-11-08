@@ -3,7 +3,7 @@
 
 #include "./types.h"
 
-extern Program *parse(TArray *);
-static void initParser(TArray *);
+Program *parse(TArray *);
+void initParser(TArray *);
 
 #endif

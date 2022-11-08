@@ -1,6 +1,6 @@
 #include "main.h"
 
-int main(small argc, string *argv) {
+int main(int argc, string *argv) {
 	Args args = { 0, NULL, 0 };
 	bool mode_configured = false;
 	for (small i = 1; i < argc; i++) {
@@ -45,6 +45,8 @@ int main(small argc, string *argv) {
 	fclose(fp);
 
 	TArray *t = tokenize(contents);
+	printf("final length %i\n", t->length);
+	printf("final size %i\n", t->size);
 	printTokens(contents, t);
 
 	free(contents);
@@ -53,7 +55,6 @@ int main(small argc, string *argv) {
 
 int CLIError(int argcount, ...) {
 	va_list v;
-	string param;
 	va_start(v, argcount);
 	printf("\x1b[7;1;91m CLIError \x1b[0;91m ");
 	for (small i = 1; i <= argcount; i++) {
@@ -66,8 +67,8 @@ int CLIError(int argcount, ...) {
 bool isLang(string arg) {
 	for (int i = 0; i < strlen(arg); i++) {
 		if (
-			!(arg[i] >= 'a' && arg[i] <= 'z'
-			|| arg[i] >= 'A' && arg[i] <= 'Z'
+			!((arg[i] >= 'a' && arg[i] <= 'z')
+			|| (arg[i] >= 'A' && arg[i] <= 'Z')
 			|| arg[i] == '+')
 		) return false;
 	}
@@ -76,9 +77,9 @@ bool isLang(string arg) {
 bool isFile(string arg) {
 	for (int i = 0; i < strlen(arg); i++) {
 		if (!(
-			arg[i] >= 'a' && arg[i] <= 'z'
-			|| arg[i] >= 'A' && arg[i] <= 'Z'
-			|| arg[i] >= '0' && arg[i] <= '9'
+			(arg[i] >= 'a' && arg[i] <= 'z')
+			|| (arg[i] >= 'A' && arg[i] <= 'Z')
+			|| (arg[i] >= '0' && arg[i] <= '9')
 			|| arg[i] == '+' || arg[i] == '.'
 			|| arg[i] == '$' || arg[i] == '~'
 			|| arg[i] == '-' || arg[i] == '\\'
@@ -96,4 +97,5 @@ Lang parseLang(string arg) {
 	} else if (strcasecmp(arg, "c") == 0) {
 		return L_C;
 	}
+	return L_UNKN;
 }

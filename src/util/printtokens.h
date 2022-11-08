@@ -4,6 +4,6 @@
 #include "../types.h"
 #include <string.h>
 
-extern void printTokens(string, TArray *);
+void printTokens(string, TArray *);
 
 #endif

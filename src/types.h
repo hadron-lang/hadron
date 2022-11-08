@@ -10,7 +10,7 @@ typedef char *string;
 #define true (bool)1
 #define false (bool)0
 
-typedef enum Types {
+typedef enum __attribute__((__packed__)) Types {
 	// COMPARE
 	CMP_EQ = 10,//* ==
 	CMP_GT,     //* >
@@ -98,6 +98,7 @@ typedef struct Token {
 
 typedef struct TArray {
 	int length;
+	int size;
 	Token **array;
 } TArray;
 
@@ -106,7 +107,7 @@ typedef struct Tokenizer {
 	int iterator;
 	int tokenStart;
 	int len;
-	TArray tokens;
+	TArray *tokens;
 	string code;
 } Tokenizer;
 typedef struct Parser {
@@ -114,8 +115,8 @@ typedef struct Parser {
 } Parser;
 typedef struct Program {} Program;
 
-extern TArray *initTArray(int);
-extern void pushToken(TArray *, Token *);
-extern void freeTArray(TArray *);
+TArray *initTArray(int);
+void pushToken(TArray *, Token *);
+void freeTArray(TArray *);
 
 #endif

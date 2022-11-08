@@ -6,19 +6,19 @@
 #include "types.h"
 
 extern TArray *tokenize(string);
-static void initTokenizer(string);
-static char next(void);
-static char peekNext(void);
-static char peekPrev(void);
-static char current(void);
-static void addToken(Type);
-static bool match(char);
-static bool end(void);
-static bool start(void);
-static bool isAlpha(char);
-static bool isDec(char);
-static bool isBin(char);
-static bool isOct(char);
-static bool isHex(char);
+void initTokenizer(string);
+char next(void);
+char peekNext(void);
+char peekPrev(void);
+char current(void);
+void addToken(Type);
+bool match(char);
+bool end(void);
+bool start(void);
+bool isAlpha(char);
+bool isDec(char);
+bool isBin(char);
+bool isOct(char);
+bool isHex(char);
 
 #endif

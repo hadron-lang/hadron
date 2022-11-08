@@ -8,8 +8,7 @@ void initTokenizer(string code) {
 	tokenizer.iterator = -1;
 	tokenizer.tokenStart = 0;
 	tokenizer.line = 1;
-	TArray tokens;
-	initTArray(&tokens);
+	TArray *tokens = initTArray(tokenizer.len/8);
 	tokenizer.tokens = tokens;
 }
 
@@ -68,22 +67,26 @@ TArray *tokenize(string code) {
 			} case '/': {
 				if (match('/')) while (peekNext() != '\n' && !end()) next();
 				else if (match('*')) while (!(next() == '*' && next() == '/') && !end());
-				else addToken(DIV); continue;
+				else addToken(DIV);
+				continue;
 			} case '=': {
 				if (match('=')) addToken(CMP_EQ);
-				else addToken(EQ); continue;
+				else addToken(EQ);
+				continue;
 			} case '>': {
 				if (match('>')) {
 					if (match('=')) addToken(RSHIFT_EQ);
 					else addToken(RSHIFT);
 				} else if (match('=')) addToken(CMP_GEQ);
-				else addToken(CMP_GT); continue;
+				else addToken(CMP_GT);
+				continue;
 			} case '<': {
 				if (match('>')) {
 					if (match('=')) addToken(LSHIFT_EQ);
 					else addToken(LSHIFT);
 				} else if (match('=')) addToken(CMP_LEQ);
-				else addToken(CMP_LT); continue;
+				else addToken(CMP_LT);
+				continue;
 			} case '%': {
 				if (match('=')) addToken(REM_EQ);
 				else addToken(REM);
@@ -131,7 +134,7 @@ TArray *tokenize(string code) {
 			};
 		}
 	}
-	return &tokenizer.tokens;
+	return tokenizer.tokens;
 }
 
 void addToken(Type type) {
@@ -140,7 +143,7 @@ void addToken(Type type) {
 	token->line = tokenizer.line;
 	token->start = tokenizer.tokenStart;
 	token->end = tokenizer.iterator+1;
-	pushToken(&tokenizer.tokens, token);
+	pushToken(tokenizer.tokens, token);
 };
 char peekNext() {
 	if (!end()) return tokenizer.code[tokenizer.iterator+1];
@@ -163,6 +166,6 @@ bool match(char c) {
 }
 bool isDec(char c) { return c >= '0' && c <= '9'; }
 bool isBin(char c) { return c == '0' ||  c == '1'; }
-bool isOct(char c) { return c >= '0' && c <= '7';}
+bool isOct(char c) { return c >= '0' && c <= '7'; }
 bool isHex(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
-bool isAlpha(char c) { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '$'; }
+bool isAlpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '$'; }

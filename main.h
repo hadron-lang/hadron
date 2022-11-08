@@ -9,7 +9,8 @@
 typedef enum Langs {
 	L_JS = 1,
 	L_C,
-	L_ASM
+	L_ASM,
+	L_UNKN
 } Lang;
 
 typedef struct Args {
@@ -18,8 +19,8 @@ typedef struct Args {
 	small mode;
 } Args;
 
-extern int main(small, string *);
-static int CLIError(int, ...);
-static bool isLang(string);
-static bool isFile(string);
-static Lang parseLang(string);
+int main(int, string *);
+int CLIError(int, ...);
+bool isLang(string);
+bool isFile(string);
+Lang parseLang(string);
