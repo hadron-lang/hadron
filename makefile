@@ -1,17 +1,16 @@
+SRC=$(shell find src/ -name '*.c') main.c
+
 gdb:
 	@clear
-	@gcc -o debug.bin -ggdb main.c
+	gcc -o out/debug.bin -ggdb $(SRC)
 gcc:
 	@clear
-	@gcc -o debug.bin main.c
+	gcc -o out/debug.bin $(SRC)
 run:
 	@clear
-	@gcc -o debug.bin main.c
-	@./debug.bin index.idk
+	gcc -o out/debug.bin $(SRC)
+	@./out/debug.bin temp/index
 debug:
 	@clear
-	@gcc -o debug.bin -ggdb main.c
-	@gdb -ex=r\ index.idk -ex=set\ confirm\ off -ex=q --silent ./debug.bin
-clean:
-	@clear
-	@rm debug.bin
+	gcc -o out/debug.bin -ggdb $(SRC)
+	@gdb -ex=r\ temp/index -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin

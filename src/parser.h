@@ -3,8 +3,6 @@
 
 #include "./types.h"
 
-void parse() {
-	
-}
+extern void parse(TArray *);
 
 #endif

@@ -3,14 +3,17 @@
 
 #include <malloc.h>
 
-#include "util/small.h"
-#include "util/bool.h"
-#include "util/string.h"
+typedef unsigned char small;
+typedef unsigned char bool;
+typedef char *string;
+
+#define true (bool)1
+#define false (bool)0
 
 typedef enum Types {
 	// COMPARE
 
-	CMP_EQ = 10, //* ==
+	CMP_EQ = 10,//* ==
 	CMP_GT,     //* >
 	CMP_LT,     //* <
 	CMP_NEQ,    //* !=
@@ -54,11 +57,8 @@ typedef enum Types {
 
 	STR,      //* "hello world"
 	NAME,
-	BLOCK,    //* { ... }
 	DEC,      //* 123
-	CALL,     //* func (...)
-	CHAIN,    //* .
-	EXP,      //* (...)
+	DOT,      //* .
 	DELMT,    //* ;
 	SEP,      //* ,
 	AT,       //* @
@@ -111,19 +111,8 @@ typedef struct Tokenizer {
 	string code;
 } Tokenizer;
 
-void initTArray(TArray *ptr) {
-	ptr->array = malloc(0);
-	ptr->length = 0;
-}
-
-void pushToken(TArray *ptr, Token token) {
-	ptr->array = realloc(ptr->array, sizeof(Token) * (ptr->length+1));
-	ptr->array[ptr->length] = token;
-	ptr->length++;
-}
-
-void freeTArray(TArray *ptr) {
-	free(ptr->array);
-}
+extern void initTArray(TArray *);
+extern void pushToken(TArray *, Token);
+extern void freeTArray(TArray *);
 
 #endif

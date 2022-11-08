@@ -1,22 +1,8 @@
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
+#include "main.h"
 
-#include "src/tokenizer.h"
-#include "src/util/args.h"
-#include "src/types.h"
-#include "src/util/printtokens.h"
-
-int main(small argc, string argv[]);
-int CLIError(int argcount, ...);
-bool isLang(string arg);
-bool isFile(string arg);
-Lang parseLang(string arg);
-
-int main(small argc, string argv[]) {
+int main(small argc, string *argv) {
 	Args args = { 0, NULL, 0 };
 	bool mode_configured = false;
-	printf("argc: %i\n", argc);
 	for (small i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
 			if (mode_configured && !args.mode)
@@ -37,8 +23,6 @@ int main(small argc, string argv[]) {
 	if (!args.mode && args.lang) return CLIError(1, "language is not available in interpreter");
 	if (/*args.mode &&*/ !args.file) return CLIError(1, "you should provide at least one file to compile");
 	if (args.mode && !args.lang) return CLIError(1, "you should choose one language to compile to");
-
-	printf("%s %i", args.file, !args.file);
 
 	FILE *fp = fopen(args.file, "r");
 	if (fp == NULL) {
