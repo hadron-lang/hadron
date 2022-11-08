@@ -12,15 +12,14 @@ typedef char *string;
 
 typedef enum Types {
 	// COMPARE
-
 	CMP_EQ = 10,//* ==
 	CMP_GT,     //* >
 	CMP_LT,     //* <
 	CMP_NEQ,    //* !=
 	CMP_LEQ,    //* <=
 	CMP_GEQ,    //* >=
-	// ASSIGN
 
+	// ASSIGN
 	EQ,        // * =
 	ADD_EQ,    // * +=
 	SUB_EQ,    // * -=
@@ -37,8 +36,8 @@ typedef enum Types {
 	REM_EQ,    // * %=
 	RSHIFT_EQ, // * >>=
 	LSHIFT_EQ, // * <<=
-	// KEYWORD
 
+	// KEYWORD
 	FOR,
 	CLASS,
 	FUNC,
@@ -53,10 +52,10 @@ typedef enum Types {
 	IMPORT,
 	NEW,
 	AWAIT,
-	// TYPE
 
+	// TYPE
 	STR,      //* "hello world"
-	NAME,
+	NAME,     //* var_name
 	DEC,      //* 123
 	DOT,      //* .
 	DELMT,    //* ;
@@ -71,8 +70,8 @@ typedef enum Types {
 	BIN,      //* 0b1111
 	COLON,    //* :
 	_EOF,     //* \0
-	// OPERATION
 
+	// OPERATION
 	ADD,    //* +
 	SUB,    //* -
 	MUL,    //* *
@@ -99,7 +98,7 @@ typedef struct Token {
 
 typedef struct TArray {
 	int length;
-	Token *array;
+	Token **array;
 } TArray;
 
 typedef struct Tokenizer {
@@ -110,9 +109,13 @@ typedef struct Tokenizer {
 	TArray tokens;
 	string code;
 } Tokenizer;
+typedef struct Parser {
 
-extern void initTArray(TArray *);
-extern void pushToken(TArray *, Token);
+} Parser;
+typedef struct Program {} Program;
+
+extern TArray *initTArray(int);
+extern void pushToken(TArray *, Token *);
 extern void freeTArray(TArray *);
 
 #endif

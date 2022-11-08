@@ -135,12 +135,12 @@ TArray *tokenize(string code) {
 }
 
 void addToken(Type type) {
-	Token token;
-	token.type = type;
-	token.line = tokenizer.line;
-	token.start = tokenizer.tokenStart;
-	token.end = tokenizer.iterator+1;
-	pushToken(&(tokenizer.tokens), token);
+	Token *token = malloc(sizeof(Token));
+	token->type = type;
+	token->line = tokenizer.line;
+	token->start = tokenizer.tokenStart;
+	token->end = tokenizer.iterator+1;
+	pushToken(&tokenizer.tokens, token);
 };
 char peekNext() {
 	if (!end()) return tokenizer.code[tokenizer.iterator+1];

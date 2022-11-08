@@ -5,12 +5,12 @@
 
 #include "types.h"
 
-extern TArray* tokenize(string);
+extern TArray *tokenize(string);
+static void initTokenizer(string);
 static char next(void);
 static char peekNext(void);
 static char peekPrev(void);
 static char current(void);
-static void initTokenizer(string);
 static void addToken(Type);
 static bool match(char);
 static bool end(void);
