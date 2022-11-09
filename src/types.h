@@ -110,10 +110,43 @@ typedef struct Tokenizer {
 	TArray *tokens;
 	string code;
 } Tokenizer;
+
 typedef struct Parser {
 
 } Parser;
-typedef struct Program {} Program;
+
+typedef enum AST_Types {
+	PROGRAM = 1,
+	IMPORT_DECLARATION,
+	IMPORT_SPECIFIER
+} AST_Type;
+
+typedef struct Typed {
+	AST_Type type;
+} Typed;
+
+typedef struct Program {
+	AST_Type type;
+	int length;
+	void **array;
+} Program;
+
+typedef struct ImportSpecifier {
+	AST_Type type; // type always coming first
+	string name;
+	string localName;
+} ImportSpecifier;
+
+typedef struct ImportSpecifierArray {
+	ImportSpecifier **array;
+	int length;
+} ImportSpecifierArray;
+
+typedef struct ImportDeclaration {
+	AST_Type type;
+	string source;
+	ImportSpecifierArray *specifiers;
+} ImportDeclaration;
 
 TArray *initTArray(int);
 void pushToken(TArray *, Token *);

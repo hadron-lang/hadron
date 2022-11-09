@@ -4,6 +4,7 @@
 #include "./types.h"
 
 Program *parse(TArray *);
+Typed *walk(void);
 void initParser(TArray *);
 
 #endif

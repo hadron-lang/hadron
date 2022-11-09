@@ -5,5 +5,7 @@
 #include <string.h>
 
 void printTokens(string, TArray *);
+void printAST(Program *);
+void util_log(Typed *v, small indent);
 
 #endif

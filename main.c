@@ -46,7 +46,7 @@ int main(int argc, string *argv) {
 	TArray *t = tokenize(contents);
 	printf("final length %i\n", t->length);
 	printf("final size %i\n", t->size);
-	printTokens(contents, t);
+	// printTokens(contents, t);
 
 	free(contents);
 	freeTArray(t);
@@ -64,7 +64,7 @@ int CLIError(int argcount, ...) {
 	return -1;
 }
 bool isLang(string arg) {
-	for (__uint64_t i = 0; i < strlen(arg); i++) {
+	for (size_t i = 0; i < strlen(arg); i++) {
 		if (
 			!((arg[i] >= 'a' && arg[i] <= 'z')
 			|| (arg[i] >= 'A' && arg[i] <= 'Z')
@@ -74,7 +74,7 @@ bool isLang(string arg) {
 	return true;
 }
 bool isFile(string arg) {
-	for (__uint64_t i = 0; i < strlen(arg); i++) {
+	for (size_t i = 0; i < strlen(arg); i++) {
 		if (!(
 			(arg[i] >= 'a' && arg[i] <= 'z')
 			|| (arg[i] >= 'A' && arg[i] <= 'Z')
