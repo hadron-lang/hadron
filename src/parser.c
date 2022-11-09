@@ -3,7 +3,7 @@
 Parser parser;
 
 void initParser(TArray *tokens) {
-	return;
+	printf("%i", tokens->length);
 };
 Program *parse(TArray *tokens) {
 	initParser(tokens);

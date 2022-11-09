@@ -16,8 +16,7 @@ int main(int argc, string *argv) {
 			args.mode = 0;
 			mode_configured = true;
 		} else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--lang") == 0) {
-			if (isLang(argv[i+1]));
-			args.lang = parseLang(argv[++i]);
+			if (isLang(argv[i+1])) args.lang = parseLang(argv[++i]);
 		} else if (isFile(argv[i])) args.file = argv[i];
 	}
 	if (!args.mode && args.lang) return CLIError(1, "language is not available in interpreter");
@@ -65,7 +64,7 @@ int CLIError(int argcount, ...) {
 	return -1;
 }
 bool isLang(string arg) {
-	for (int i = 0; i < strlen(arg); i++) {
+	for (__uint64_t i = 0; i < strlen(arg); i++) {
 		if (
 			!((arg[i] >= 'a' && arg[i] <= 'z')
 			|| (arg[i] >= 'A' && arg[i] <= 'Z')
@@ -75,7 +74,7 @@ bool isLang(string arg) {
 	return true;
 }
 bool isFile(string arg) {
-	for (int i = 0; i < strlen(arg); i++) {
+	for (__uint64_t i = 0; i < strlen(arg); i++) {
 		if (!(
 			(arg[i] >= 'a' && arg[i] <= 'z')
 			|| (arg[i] >= 'A' && arg[i] <= 'Z')
