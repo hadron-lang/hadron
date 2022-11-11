@@ -6,6 +6,7 @@
 
 void printTokens(string, TArray *);
 void printAST(Program *);
-void util_log(Typed *v, small indent);
+void util_log(Typed *, small);
+void printErrors(Array *);
 
 #endif

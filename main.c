@@ -2,37 +2,41 @@
 
 int main(int argc, string *argv) {
 	Args args = { 0, NULL, 0 };
+	Array *errors = malloc(sizeof(Array));
+	initArray(errors, 1);
 	bool mode_configured = false;
 	for (small i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
 			if (mode_configured && !args.mode)
-				return CLIError(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive");
+				push(errors, Error("CLI", 3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 1;
 			mode_configured = true;
 		} else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interpret") == 0) {
-			if (args.lang) return CLIError(1, "language is not configurable in interpreter");
+			if (args.lang) push(errors, Error("CLI", 1, "language is not configurable in interpreter"));
 			if (mode_configured && args.mode)
-				return CLIError(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive");
+				push(errors, Error("CLI", 3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 0;
 			mode_configured = true;
 		} else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--lang") == 0) {
 			if (isLang(argv[i+1])) args.lang = parseLang(argv[++i]);
 		} else if (isFile(argv[i])) args.file = argv[i];
 	}
-	if (!args.mode && args.lang) return CLIError(1, "language is not available in interpreter");
-	if (/*args.mode &&*/ !args.file) return CLIError(1, "you should provide at least one file to compile");
-	if (args.mode && !args.lang) return CLIError(1, "you should choose one language to compile to");
-
+	if (!args.mode && args.lang) push(errors, Error("CLI", 1, "language is not available in interpreter"));
+	if (/*args.mode &&*/ !args.file) push(errors, Error("CLI", 1, "you should provide at least one file to compile"));
+	if (args.mode && !args.lang) push(errors, Error("CLI", 1, "you should choose one language to compile to"));
+	if (check(errors)) return -1;
 	FILE *fp = fopen(args.file, "r");
 	if (fp == NULL) {
-		string err1 = "file\x1b[97m ";
-		string err = malloc(strlen(err1) + strlen(args.file));
-		strcat(err, err1);
-		strcat(err, args.file);
-		CLIError(2, err, " does not exist");
-		free(err);
-		return -1;
+		string e0 = "file \x1b[97m";
+		string e = malloc(strlen(e0) + strlen(args.file) + 1);
+		strcpy(e, e0);
+		strcat(e, args.file);
+		push(errors, Error("CLI", 2, e, " does not exist"));
+		free(e);
 	}
+	if (check(errors)) return -1;
+	free(errors->array);
+	free(errors);
 
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
@@ -43,26 +47,24 @@ int main(int argc, string *argv) {
 
 	fclose(fp);
 
-	TArray *t = tokenize(contents);
-	printf("final length %i\n", t->length);
-	printf("final size %i\n", t->size);
-	// printTokens(contents, t);
+	Result *t = tokenize(contents);
+	if (t->errors->length) {
+		printErrors(t->errors);
+		return -1;
+	}
+	// printTokens(contents, t->data);
+	Program *p = parse(t->data);
+	printAST(p);
 
 	free(contents);
-	freeTArray(t);
+	freeArray(t->data);
 }
 
-int CLIError(int argcount, ...) {
-	va_list v;
-	va_start(v, argcount);
-	printf("\x1b[7;1;91m CLIError \x1b[0;91m ");
-	for (small i = 1; i <= argcount; i++) {
-		printf("%s\x1b[0;91m", va_arg(v, string));
-	}
-	va_end(v);
-	printf("\x1b[0m\n");
-	return -1;
+int check(Array *errors) {
+	if (errors->length) { printErrors(errors); return 1; };
+	return 0;
 }
+
 bool isLang(string arg) {
 	for (size_t i = 0; i < strlen(arg); i++) {
 		if (
@@ -82,7 +84,7 @@ bool isFile(string arg) {
 			|| arg[i] == '+' || arg[i] == '.'
 			|| arg[i] == '$' || arg[i] == '~'
 			|| arg[i] == '-' || arg[i] == '\\'
-			|| arg[i] == '/'
+			|| arg[i] == '/' || arg[i] == '_'
 		)) return false;
 	}
 	return true;

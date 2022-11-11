@@ -10,8 +10,8 @@ gcc:
 run:
 	@clear
 	gcc -o out/debug.bin $(SRC)
-	@./out/debug.bin temp/index
+	@./out/debug.bin temp/index.idk
 debug:
 	@clear
 	gcc -o out/debug.bin $(CARGS) $(SRC)
-	@gdb -ex=r\ temp/index -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin
+	@gdb -ex=r\ temp/index.idk -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin

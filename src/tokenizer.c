@@ -8,11 +8,15 @@ void initTokenizer(string code) {
 	tokenizer.iterator = -1;
 	tokenizer.tokenStart = 0;
 	tokenizer.line = 1;
-	TArray *tokens = initTArray(tokenizer.len/8);
+	TArray *tokens = malloc(sizeof(TArray));
+	initArray(tokens, tokenizer.len/8);
 	tokenizer.tokens = tokens;
+	Array *errors = malloc(sizeof(Array));
+	initArray(errors, 2);
+	tokenizer.errors = errors;
 }
 
-TArray *tokenize(string code) {
+Result *tokenize(string code) {
 	initTokenizer(code);
 	char c;
 	while (!end()) {
@@ -27,6 +31,7 @@ TArray *tokenize(string code) {
 			case '[': case ']': addToken(BRACKET); continue;
 			case '(': case ')': addToken(PAREN); continue;
 			case '\0': addToken(_EOF); continue;
+			case '\n': tokenizer.line++; continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
 				else if (match('+')) addToken(INCR);
@@ -66,7 +71,9 @@ TArray *tokenize(string code) {
 				continue;
 			} case '/': {
 				if (match('/')) while (peekNext() != '\n' && !end()) next();
-				else if (match('*')) while (!(next() == '*' && next() == '/') && !end());
+				else if (match('*')) while (!(next() == '*' && next() == '/') && !end()) {
+					if (peekNext() == '\n') tokenizer.line++;
+				}
 				else addToken(DIV);
 				continue;
 			} case '=': {
@@ -90,8 +97,10 @@ TArray *tokenize(string code) {
 			} case '%': {
 				if (match('=')) addToken(REM_EQ);
 				else addToken(REM);
+				continue;
 			} case '"': {
 				while (peekNext() != '"') {
+					if (peekNext() == '\n') push(tokenizer.errors, Error("Syntax", 1, "unterminated string"));
 					next();
 				}; next(); addToken(STR); continue;
 			} default: {
@@ -134,7 +143,10 @@ TArray *tokenize(string code) {
 			};
 		}
 	}
-	return tokenizer.tokens;
+	Result *result = malloc(sizeof(Result));
+	result->errors = tokenizer.errors;
+	result->data = tokenizer.tokens;
+	return result;
 }
 
 void addToken(Type type) {
@@ -143,7 +155,7 @@ void addToken(Type type) {
 	token->line = tokenizer.line;
 	token->start = tokenizer.tokenStart;
 	token->end = tokenizer.iterator+1;
-	pushToken(tokenizer.tokens, token);
+	push(tokenizer.tokens, token);
 };
 char peekNext() {
 	if (!end()) return tokenizer.code[tokenizer.iterator+1];
@@ -168,4 +180,4 @@ bool isDec(char c) { return c >= '0' && c <= '9'; }
 bool isBin(char c) { return c == '0' ||  c == '1'; }
 bool isOct(char c) { return c >= '0' && c <= '7'; }
 bool isHex(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
-bool isAlpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '$'; }
+bool isAlpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '$' || c == '_'; }

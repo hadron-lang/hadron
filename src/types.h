@@ -12,12 +12,12 @@ typedef char *string;
 
 typedef enum __attribute__((__packed__)) Types {
 	// COMPARE
-	CMP_EQ = 10,//* ==
-	CMP_GT,     //* >
-	CMP_LT,     //* <
-	CMP_NEQ,    //* !=
-	CMP_LEQ,    //* <=
-	CMP_GEQ,    //* >=
+	CMP_EQ,  //* ==
+	CMP_GT,  //* >
+	CMP_LT,  //* <
+	CMP_NEQ, //* !=
+	CMP_LEQ, //* <=
+	CMP_GEQ, //* >=
 
 	// ASSIGN
 	EQ,        // * =
@@ -96,7 +96,13 @@ typedef struct Token {
 	int end;
 } Token;
 
-typedef struct TArray {
+typedef struct Array {
+	int length;
+	int size;
+	void **array;
+} Array;
+
+typedef struct TArray { // extends Array
 	int length;
 	int size;
 	Token **array;
@@ -108,14 +114,11 @@ typedef struct Tokenizer {
 	int tokenStart;
 	int len;
 	TArray *tokens;
+	Array *errors;
 	string code;
 } Tokenizer;
 
-typedef struct Parser {
-
-} Parser;
-
-typedef enum AST_Types {
+typedef enum __attribute__((__packed__)) AST_Types {
 	PROGRAM = 1,
 	IMPORT_DECLARATION,
 	IMPORT_SPECIFIER
@@ -125,31 +128,45 @@ typedef struct Typed {
 	AST_Type type;
 } Typed;
 
-typedef struct Program {
+typedef struct Program { // extends Typed
 	AST_Type type;
-	int length;
-	void **array;
+	Array body;
 } Program;
 
-typedef struct ImportSpecifier {
-	AST_Type type; // type always coming first
+typedef struct ImportSpecifier { // extends Typed
+	AST_Type type;
 	string name;
-	string localName;
+	string local;
 } ImportSpecifier;
 
-typedef struct ImportSpecifierArray {
-	ImportSpecifier **array;
+typedef struct ImportSpecifierArray { // extends Array
 	int length;
+	int size;
+	ImportSpecifier **array;
 } ImportSpecifierArray;
 
-typedef struct ImportDeclaration {
+typedef struct ImportDeclaration { // extends Typed
 	AST_Type type;
 	string source;
 	ImportSpecifierArray *specifiers;
 } ImportDeclaration;
 
-TArray *initTArray(int);
-void pushToken(TArray *, Token *);
-void freeTArray(TArray *);
+typedef struct Parser {
+	TArray *tokens;
+	Program *program;
+} Parser;
+
+typedef struct Result {
+	Array *errors;
+	void *data;
+} Result;
+
+void initArray(void *arraylike, int);
+void freeArray(void *arraylike);
+void push(void *arraylike, void *);
+void freeProgram(Program *);
+Program *initProgram(int);
+ImportSpecifier *initImportSpecifier(string, string);
+ImportDeclaration *initImportDeclaration(string, ImportSpecifierArray *);
 
 #endif
