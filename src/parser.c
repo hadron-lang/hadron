@@ -13,6 +13,42 @@ void initParser(string code, TArray *tokens) {
 	parser.code = code;
 };
 
+ImportDeclaration *walk_import(string src) {
+	ImportSpecifierArray *speca = malloc(sizeof(ImportSpecifierArray));
+	initArray(speca, 2);
+	ImportSpecifier *spec;
+	while (temp_next()->type != CBRACKET) {
+		string name;
+		string local;
+		if (temp_current()->type == NAME) {
+			name = malloc(temp_current()->end - temp_current()->start + 1);
+			memcpy(name, parser.code+temp_current()->start, temp_current()->end - temp_current()->start);
+			if (temp_match(AS)) {
+				if (temp_match(NAME)) {
+					local = malloc(temp_current()->end - temp_current()->start + 1);
+					memcpy(local, parser.code+temp_current()->start, temp_current()->end - temp_current()->start);
+					spec = initImportSpecifier(name, local);
+					pushArray(speca, spec);
+				} else pushArray(parser.errors, Error("Parse", 1, "2"));
+			} else if (temp_match(SEP) || temp_match(CBRACKET)) {
+				local = name;
+				spec = initImportSpecifier(name, local);
+				pushArray(speca, spec);
+			} else pushArray(parser.errors, Error(
+				"Parse", 2,
+				"(1) got ",
+				getType(temp_peekNext()->type, "")
+			));
+		} else pushArray(parser.errors, Error(
+			"Parse", 2,
+			"(0) got ",
+			getType(temp_current()->type, "")
+		));
+	}
+	trimArray(speca);
+	ImportDeclaration *decl = initImportDeclaration(src, speca);
+	return decl;
+}
 Typed *walk(void) {
 	return NULL;
 }
@@ -39,10 +75,6 @@ bool temp_match(Type type) {
 
 Result *parse(string code, TArray *tokens) {
 	initParser(code, tokens);
-	// Token t;
-	// while (!end()) {
-		// t = next();
-	// }
 	Token *t;
 	while (!temp_end()) {
 		t = temp_next();
@@ -55,7 +87,7 @@ Result *parse(string code, TArray *tokens) {
 				src = malloc(f->end - f->start - 1);
 				memcpy(src, parser.code+f->start+1, f->end - f->start-2);
 			} else {
-				push(parser.errors, Error(
+				pushArray(parser.errors, Error(
 					"Parse", 4,
 					"expected ",
 					getType(STR, "\x1b[93m"),
@@ -63,27 +95,20 @@ Result *parse(string code, TArray *tokens) {
 					getType(f->type, "\x1b[93m")
 				));
 			}
-			if (temp_next()->type != IMPORT) push(parser.errors, Error("Parse", 1, "import"));
+			if (temp_next()->type != IMPORT) pushArray(parser.errors, Error("Parse", 1, "expected \x1b[96mimport"));
 			if (temp_next()->type == CBRACKET) {
-				while (temp_peekNext()->type != CBRACKET) {
-					temp_next();
-				}
-			} else push(parser.errors, Error("Parse", 1, "{"));
-			ImportSpecifier *spec = initImportSpecifier("a", "b");
-			push(speca, spec);
-			ImportDeclaration *decl = initImportDeclaration(src, speca);
-			push(&parser.program->body, decl);
+				ImportDeclaration *decl = walk_import(src);
+				pushArray(parser.program->body, decl);
+			} else if (temp_current()->type == NAME) {
+				string local = malloc(temp_current()->end - temp_current()->start + 1);
+				memcpy(local, parser.code+temp_current()->start, temp_current()->end - temp_current()->start);
+				ImportSpecifier *spec = initImportSpecifier("exports", local);
+				pushArray(speca, spec);
+				ImportDeclaration *decl = initImportDeclaration(src, speca);
+				pushArray(parser.program->body, decl);
+			}
 		}
 	};
-
-	// ImportSpecifier *spec0 = initImportSpecifier("get", "httpGET");
-	// ImportSpecifier *spec1 = initImportSpecifier("post", "httpPOST");
-	// ImportSpecifierArray *speca = malloc(sizeof(ImportSpecifierArray));
-	// initArray(speca, 2);
-	// push(speca, spec0);
-	// push(speca, spec1);
-	// ImportDeclaration *decl = initImportDeclaration("http", speca);
-	// push(&parser.program->body, decl);
 
 	Result *result = malloc(sizeof(Result));
 	result->errors = parser.errors;
