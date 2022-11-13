@@ -2,6 +2,8 @@
 #define __LANG_TYPES_H 1
 
 #include <malloc.h>
+#include <stdarg.h>
+#include <string.h>
 
 typedef unsigned char small;
 typedef unsigned char bool;
@@ -52,6 +54,7 @@ typedef enum __attribute__((__packed__)) Types {
 	IMPORT,
 	NEW,
 	AWAIT,
+	AS,
 
 	// TYPE
 	STR,      //* "hello world"
@@ -152,8 +155,11 @@ typedef struct ImportDeclaration { // extends Typed
 } ImportDeclaration;
 
 typedef struct Parser {
+	int iterator;
 	TArray *tokens;
 	Program *program;
+	Array *errors;
+	string code;
 } Parser;
 
 typedef struct Result {
@@ -165,6 +171,7 @@ void initArray(void *arraylike, int);
 void freeArray(void *arraylike);
 void push(void *arraylike, void *);
 void freeProgram(Program *);
+string getType(Type, ...);
 Program *initProgram(int);
 ImportSpecifier *initImportSpecifier(string, string);
 ImportDeclaration *initImportDeclaration(string, ImportSpecifierArray *);

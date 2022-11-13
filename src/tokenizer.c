@@ -71,9 +71,9 @@ Result *tokenize(string code) {
 				continue;
 			} case '/': {
 				if (match('/')) while (peekNext() != '\n' && !end()) next();
-				else if (match('*')) while (!(next() == '*' && next() == '/') && !end()) {
+				else if (match('*')) { while (!(next() == '*' && next() == '/') && !end()) {
 					if (peekNext() == '\n') tokenizer.line++;
-				}
+				}; tokenizer.line++; }
 				else addToken(DIV);
 				continue;
 			} case '=': {
@@ -138,6 +138,7 @@ Result *tokenize(string code) {
 					if (!strcmp(substr, "import")) { addToken(IMPORT); free(substr); continue; }
 					if (!strcmp(substr, "new")) { addToken(NEW); free(substr); continue; }
 					if (!strcmp(substr, "await")) { addToken(AWAIT); free(substr); continue; }
+					if (!strcmp(substr, "as")) { addToken(AS); free(substr); continue; }
 					addToken(NAME); free(substr);
 				}; continue;
 			};

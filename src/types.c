@@ -39,6 +39,26 @@ void freeProgram(Program *program) {
 	}
 }
 
+string getType(Type type, ...) {
+	va_list v;
+	va_start(v, type);
+	string s = va_arg(v, string);
+	string r = malloc(strlen(s) + 16);
+	strcpy(r, s);
+	string s0;
+	switch (type) {
+		case STR: s0 = "String"; break;
+		case NAME: s0 = "Name"; break;
+		case DEC: case HEX: case OCTAL: case BIN: s0 = "Number"; break;
+		case BRACKET: s0 = "Bracket"; break;
+		case PAREN: s0 = "Parenthesis"; break;
+		case CBRACKET: s0 = "CurlyBracket"; break;
+		default: s0 = "Undefined"; break;
+	}
+	strcat(r, s0);
+	return r;
+}
+
 ImportSpecifier *initImportSpecifier(string name, string local) {
 	ImportSpecifier *spec = malloc(sizeof(ImportSpecifier));
 	spec->type = IMPORT_SPECIFIER;

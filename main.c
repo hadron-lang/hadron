@@ -48,16 +48,21 @@ int main(int argc, string *argv) {
 	fclose(fp);
 
 	Result *t = tokenize(contents);
-	if (t->errors->length) {
-		printErrors(t->errors);
-		return -1;
-	}
+	if (check(t->errors)) return -1;
+	free(t->errors->array);
+	free(t->errors);
+
 	// printTokens(contents, t->data);
-	Program *p = parse(t->data);
-	printAST(p);
+
+	Result *p = parse(contents, t->data);
+	freeArray(t->data);
+	if (check(p->errors)) return -1;
+	free(p->errors->array);
+	free(p->errors);
+
+	printAST(p->data, 2);
 
 	free(contents);
-	freeArray(t->data);
 }
 
 int check(Array *errors) {
