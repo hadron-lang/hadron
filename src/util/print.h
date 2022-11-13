@@ -1,13 +1,14 @@
 #ifndef __LANG_PRINTTOKENS
 #define __LANG_PRINTTOKENS 1
 
-#include "../types.h"
 #include <string.h>
+#include "../types.h"
+#include "array.h"
 
-void printTokens(string, TArray *);
-void printAST(Program *, small depth);
+extern void printTokens(string file_contents, TArray *tokens);
+extern void printAST(Program *program, small depth);
+extern void printErrors(Array *);
 void util_typelog(Typed *, small);
 void util_log(Typed *, small, small);
-void printErrors(Array *);
 
 #endif

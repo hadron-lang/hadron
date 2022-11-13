@@ -6,7 +6,7 @@
 #include "types.h"
 #include "errors.h"
 
-Result *tokenize(string);
+extern Result *tokenize(string);
 void initTokenizer(string);
 char next(void);
 char peekNext(void);

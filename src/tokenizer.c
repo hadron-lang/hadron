@@ -100,7 +100,7 @@ Result *tokenize(string code) {
 				continue;
 			} case '"': {
 				while (peekNext() != '"') {
-					if (peekNext() == '\n') push(tokenizer.errors, Error("Syntax", 1, "unterminated string"));
+					if (peekNext() == '\n') pushArray(tokenizer.errors, Error("Syntax", 1, "unterminated string"));
 					next();
 				}; next(); addToken(STR); continue;
 			} default: {
@@ -145,6 +145,7 @@ Result *tokenize(string code) {
 		}
 	}
 	Result *result = malloc(sizeof(Result));
+	trimArray(tokenizer.tokens);
 	result->errors = tokenizer.errors;
 	result->data = tokenizer.tokens;
 	return result;
@@ -156,7 +157,7 @@ void addToken(Type type) {
 	token->line = tokenizer.line;
 	token->start = tokenizer.tokenStart;
 	token->end = tokenizer.iterator+1;
-	push(tokenizer.tokens, token);
+	pushArray(tokenizer.tokens, token);
 };
 char peekNext() {
 	if (!end()) return tokenizer.code[tokenizer.iterator+1];

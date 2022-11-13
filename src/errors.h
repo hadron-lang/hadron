@@ -2,4 +2,4 @@
 #include <string.h>
 #include "types.h"
 
-string Error(string, int, ...);
+extern string Error(string error_name, int arg_count, ...);

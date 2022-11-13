@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <stdarg.h>
 #include <string.h>
+#include "util/array.h"
 
 typedef unsigned char small;
 typedef unsigned char bool;
@@ -99,12 +100,6 @@ typedef struct Token {
 	int end;
 } Token;
 
-typedef struct Array {
-	int length;
-	int size;
-	void **array;
-} Array;
-
 typedef struct TArray { // extends Array
 	int length;
 	int size;
@@ -133,7 +128,7 @@ typedef struct Typed {
 
 typedef struct Program { // extends Typed
 	AST_Type type;
-	Array body;
+	Array *body;
 } Program;
 
 typedef struct ImportSpecifier { // extends Typed
@@ -167,13 +162,10 @@ typedef struct Result {
 	void *data;
 } Result;
 
-void initArray(void *arraylike, int);
-void freeArray(void *arraylike);
-void push(void *arraylike, void *);
-void freeProgram(Program *);
-string getType(Type, ...);
-Program *initProgram(int);
-ImportSpecifier *initImportSpecifier(string, string);
-ImportDeclaration *initImportDeclaration(string, ImportSpecifierArray *);
+extern void freeProgram(Program *);
+extern string getType(Type, ...);
+extern Program *initProgram(int);
+extern ImportSpecifier *initImportSpecifier(string, string);
+extern ImportDeclaration *initImportDeclaration(string, ImportSpecifierArray *);
 
 #endif

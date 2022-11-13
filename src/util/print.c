@@ -14,6 +14,9 @@ void printTokens(string code, TArray *tokens) {
 void util_typelog(Typed *v, small indent) {
 	for (small i = 0; i < indent; i++) printf("  ");
 	switch (v->type) {
+		case PROGRAM:
+			printf("\x1b[95m[Program]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			break;
 		case IMPORT_DECLARATION:
 			printf("\x1b[95m[ImportDeclaration]\x1b[0m { \x1b[94m...\x1b[0m ");
 			break;
@@ -31,8 +34,8 @@ void util_log(Typed *v, small indent, small depth) {
 		case PROGRAM: {
 			printf("\x1b[95m[Program]\x1b[0m {\n");
 			for (small i = 0; i < indent; i++) printf("  ");
-			for (int i = 0; i < ((Program *)v)->body.length; i++) {
-				util_log(((Program *)v)->body.array[i], indent+1, depth);
+			for (int i = 0; i < ((Program *)v)->body->length; i++) {
+				util_log(((Program *)v)->body->array[i], indent+1, depth);
 				printf("}\n");
 			}
 			printf("}\n");

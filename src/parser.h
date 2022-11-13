@@ -4,15 +4,14 @@
 #include "./types.h"
 #include "./errors.h"
 
-Result *parse(string, TArray *);
-Typed *walk(void);
+extern Result *parse(string, TArray *);
 void initParser(string, TArray *);
-// Token next(void);
-// Token peekNext(void);
-// Token peekPrev(void);
-// Token current(void);
-// bool match_token(Type);
-// bool end(void);
-// bool start(void);
+bool temp_end(void);
+bool temp_start(void);
+Token *temp_next(void);
+Token *temp_peekNext(void);
+Token *temp_peekPrev(void);
+Token *temp_current(void);
+bool temp_match(Type);
 
 #endif
