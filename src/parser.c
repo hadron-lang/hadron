@@ -55,7 +55,7 @@ Result *parse(string code, TArray *tokens) {
 				src = malloc(f->end - f->start - 1);
 				memcpy(src, parser.code+f->start+1, f->end - f->start-2);
 			} else {
-				push(parser.errors, Error(
+				pushArray(parser.errors, Error(
 					"Parse", 4,
 					"expected ",
 					getType(STR, "\x1b[93m"),
@@ -63,27 +63,18 @@ Result *parse(string code, TArray *tokens) {
 					getType(f->type, "\x1b[93m")
 				));
 			}
-			if (temp_next()->type != IMPORT) push(parser.errors, Error("Parse", 1, "import"));
+			if (temp_next()->type != IMPORT) pushArray(parser.errors, Error("Parse", 1, "import"));
 			if (temp_next()->type == CBRACKET) {
 				while (temp_peekNext()->type != CBRACKET) {
 					temp_next();
 				}
-			} else push(parser.errors, Error("Parse", 1, "{"));
+			} else pushArray(parser.errors, Error("Parse", 1, "{"));
 			ImportSpecifier *spec = initImportSpecifier("a", "b");
-			push(speca, spec);
+			pushArray(speca, spec);
 			ImportDeclaration *decl = initImportDeclaration(src, speca);
-			push(&parser.program->body, decl);
+			pushArray(&parser.program->body, decl);
 		}
 	};
-
-	// ImportSpecifier *spec0 = initImportSpecifier("get", "httpGET");
-	// ImportSpecifier *spec1 = initImportSpecifier("post", "httpPOST");
-	// ImportSpecifierArray *speca = malloc(sizeof(ImportSpecifierArray));
-	// initArray(speca, 2);
-	// push(speca, spec0);
-	// push(speca, spec1);
-	// ImportDeclaration *decl = initImportDeclaration("http", speca);
-	// push(&parser.program->body, decl);
 
 	Result *result = malloc(sizeof(Result));
 	result->errors = parser.errors;
