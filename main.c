@@ -8,22 +8,22 @@ int main(int argc, string *argv) {
 	for (small i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
 			if (mode_configured && !args.mode)
-				pushArray(errors, Error("CLI", 3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
+				pushArray(errors, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 1;
 			mode_configured = true;
 		} else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interpret") == 0) {
-			if (args.lang) pushArray(errors, Error("CLI", 1, "language is not configurable in interpreter"));
+			if (args.lang) pushArray(errors, clierror(1, "language is not configurable in interpreter"));
 			if (mode_configured && args.mode)
-				pushArray(errors, Error("CLI", 3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
+				pushArray(errors, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 0;
 			mode_configured = true;
 		} else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--lang") == 0) {
 			if (isLang(argv[i+1])) args.lang = parseLang(argv[++i]);
 		} else if (isFile(argv[i])) args.file = argv[i];
 	}
-	if (!args.mode && args.lang) pushArray(errors, Error("CLI", 1, "language is not available in interpreter"));
-	if (/*args.mode &&*/ !args.file) pushArray(errors, Error("CLI", 1, "you should provide at least one file to compile"));
-	if (args.mode && !args.lang) pushArray(errors, Error("CLI", 1, "you should choose one language to compile to"));
+	if (!args.mode && args.lang) pushArray(errors, clierror(1, "language is not available in interpreter"));
+	if (/*args.mode &&*/ !args.file) pushArray(errors, clierror(1, "you should provide at least one file to compile"));
+	if (args.mode && !args.lang) pushArray(errors, clierror(1, "you should choose one language to compile to"));
 	if (check(errors)) return -1;
 	FILE *fp = fopen(args.file, "r");
 	if (fp == NULL) {
@@ -31,7 +31,7 @@ int main(int argc, string *argv) {
 		string e = malloc(strlen(e0) + strlen(args.file) + 1);
 		strcpy(e, e0);
 		strcat(e, args.file);
-		pushArray(errors, Error("CLI", 2, e, " does not exist"));
+		pushArray(errors, clierror(2, e, " does not exist"));
 		free(e);
 	}
 	if (check(errors)) return -1;
@@ -68,7 +68,7 @@ int main(int argc, string *argv) {
 }
 
 int check(Array *errors) {
-	if (errors->length) { printErrors(errors); return 1; };
+	if (errors->l) { printErrors(errors); return 1; };
 	return 0;
 }
 

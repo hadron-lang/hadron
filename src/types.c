@@ -1,16 +1,16 @@
 #include "types.h"
 
-Program *initProgram(int size) {
+Program *initProgram(int s) {
 	Program *prg = malloc(sizeof(Program));
 	prg->type = PROGRAM;
 	Array *body = malloc(sizeof(Array));
-	initArray(body, size);
+	initArray(body, s);
 	prg->body = body;
 	return prg;
 }
 void freeProgram(Program *program) {
-	for (int i = 0; i < program->body->length; i++) {
-		switch (((Typed *)program->body->array[i])->type) {
+	for (int i = 0; i < program->body->l; i++) {
+		switch (((Typed *)program->body->a[i])->type) {
 			case PROGRAM: { break; }
 			case IMPORT_DECLARATION: { break; }
 			case IMPORT_SPECIFIER: { break; }
@@ -45,10 +45,10 @@ ImportSpecifier *initImportSpecifier(string name, string local) {
 	spec->local = local;
 	return spec;
 }
-ImportDeclaration *initImportDeclaration(string src, ImportSpecifierArray *specs) {
+ImportDeclaration *initImportDeclaration(string src, Array *speca) {
 	ImportDeclaration *decl = malloc(sizeof(ImportSpecifier));
 	decl->type = IMPORT_DECLARATION;
 	decl->source = src;
-	decl->specifiers = specs;
+	decl->specifiers = speca;
 	return decl;
 }

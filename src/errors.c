@@ -1,30 +1,47 @@
 #include "errors.h"
 
-string Error(string name, int argcount, ...) {
-	string e0 = "\x1b[7;1;91m ";
-	string e1 = "Error \x1b[0;91m ";
-	string e2 = "\x1b[0m\n";
+CLIError *clierror(int argc, ...) {
+	size_t s;
+	va_list v0;
+	va_list v1;
+	va_start(v0, argc);
+	for (small i = 1; i <= argc; i++) {
+		s += strlen(va_arg(v0, string));
+	}; va_end(v0);
+	string e = malloc(s+1);
+	strcpy(e, "");
+	va_start(v1, argc);
+	for (small i = 1; i <= argc; i++) {
+		strcat(e, va_arg(v1, string));
+	}; va_end(v1);
+	CLIError *err = malloc(sizeof(CLIError));
+	err->type = CLIERROR;
+	err->data = e;
+	return err;
+}
+
+Error *error(string name, string file, int line, int argcount, ...) {
+	string n = malloc(strlen("Error") + strlen(name) + 1);
+	strcpy(n, name);
+	strcat(n, "Error");
 	va_list v0;
 	va_list v1;
 	va_start(v0, argcount);
-	size_t s = strlen(e0) + strlen(name) + strlen(e1) + strlen(e2);
+	size_t s = strlen(name);
 	for (small i = 1; i <= argcount; i++) {
-		string tmp0 = "\x1b[0;91m";
-		string tmp1 = va_arg(v0, string);
-		s += strlen(tmp0) + strlen(tmp1);
-	}
-	va_end(v0);
+		s += strlen(va_arg(v0, string)) + 4;
+	}; va_end(v0);
 	string e = malloc(s + 1);
-	strcpy(e, e0);
-	strcat(e, name);
-	strcat(e, e1);
+	strcpy(e, "");
 	va_start(v1, argcount);
 	for (small i = 1; i <= argcount; i++) {
-		string tmp = "\x1b[0;91m";
-		strcat(e, tmp);
 		strcat(e, va_arg(v1, string));
-	}
-	va_end(v1);
-	strcat(e, e2);
-	return e;
+	}; va_end(v1);
+	Error *err = malloc(sizeof(Error));
+	err->type = ERROR;
+	err->name = n;
+	err->file = file;
+	err->data = e;
+	err->line = line;
+	return err;
 };

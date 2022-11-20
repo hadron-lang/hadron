@@ -2,13 +2,14 @@
 #define __LANG_PRINTTOKENS 1
 
 #include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #include "../types.h"
 #include "array.h"
+#include "../errors.h"
 
-extern void printTokens(string file_contents, TArray *tokens);
+extern void printTokens(string file_contents, Array *tokens);
 extern void printAST(Program *program, small depth);
 extern void printErrors(Array *);
-void util_typelog(Typed *, small);
-void util_log(Typed *, small, small);
 
 #endif
