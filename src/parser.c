@@ -96,6 +96,7 @@ extern Result *parse(string code, Array *tokens) {
 				src = malloc(f->end - f->start - 1);
 				memcpy(src, parser.code+f->start+1, f->end - f->start-2);
 			} else {
+
 				pushArray(parser.errors, error(
 					"Parse", "temp/index.idk", -1, 4,
 					"expected ",
