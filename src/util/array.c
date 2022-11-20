@@ -6,30 +6,30 @@ Array *newArray(int s) {
 	return p;
 }
 
-void initArray(void *a, int s) {
+void initArray(Array *a, int s) {
 	Array *p = (Array *)a;
-	p->array = malloc(sizeof(void *) * s);
-	p->length = 0;
-	p->size = s;
+	p->a = malloc(sizeof(void *) * s);
+	p->l = 0;
+	p->s = s;
 }
 
-void trimArray(void *a) {
+void trimArray(Array *a) {
 	Array *p = (Array *)a;
-	p->array = realloc(p->array, sizeof(void *) * p->length);
-	p->size = p->length;
+	p->a = realloc(p->a, sizeof(void *) * p->l);
+	p->s = p->l;
 }
 
-void pushArray(void *a, void *el) {
+void pushArray(Array *a, void *el) {
 	Array *p = (Array *)a;
-	if (p->size == p->length) {
-		p->size *= 1.5;
-		p->array = realloc(p->array, sizeof(void *) * p->size);
+	if (p->s == p->l) {
+		p->s *= 1.5;
+		p->a = realloc(p->a, sizeof(void *) * p->s);
 	}
-	p->array[p->length++] = el;
+	p->a[p->l++] = el;
 }
 
-void freeArray(void *a) {
+void freeArray(Array *a) {
 	Array *p = (Array *)a;
-	for (int i = 0; i < p->length; i++) free(p->array[i]);
-	free(p->array);
+	for (int i = 0; i < p->l; i++) free(p->a[i]);
+	free(p->a);
 }

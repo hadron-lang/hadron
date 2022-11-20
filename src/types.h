@@ -100,18 +100,12 @@ typedef struct Token {
 	int end;
 } Token;
 
-typedef struct TArray { // extends Array
-	int length;
-	int size;
-	Token **array;
-} TArray;
-
 typedef struct Tokenizer {
 	int line;
 	int iterator;
 	int tokenStart;
 	int len;
-	TArray *tokens;
+	Array *tokens;
 	Array *errors;
 	string code;
 } Tokenizer;
@@ -137,21 +131,15 @@ typedef struct ImportSpecifier { // extends Typed
 	string local;
 } ImportSpecifier;
 
-typedef struct ImportSpecifierArray { // extends Array
-	int length;
-	int size;
-	ImportSpecifier **array;
-} ImportSpecifierArray;
-
 typedef struct ImportDeclaration { // extends Typed
 	AST_Type type;
 	string source;
-	ImportSpecifierArray *specifiers;
+	Array *specifiers;
 } ImportDeclaration;
 
 typedef struct Parser {
 	int iterator;
-	TArray *tokens;
+	Array *tokens;
 	Program *program;
 	Array *errors;
 	string code;
@@ -165,7 +153,7 @@ typedef struct Result {
 extern void freeProgram(Program *);
 extern string getType(Type, ...);
 extern Program *initProgram(int);
-extern ImportSpecifier *initImportSpecifier(string, string);
-extern ImportDeclaration *initImportDeclaration(string, ImportSpecifierArray *);
+extern ImportSpecifier *initImportSpecifier(string name, string local_name);
+extern ImportDeclaration *initImportDeclaration(string, Array *import_specifier_array);
 
 #endif

@@ -1,5 +1,20 @@
 #include "tokenizer.h"
 
+static void initTokenizer(string);
+static char next(void);
+static char peekNext(void);
+// static char peekPrev(void);
+static char current(void);
+static void addToken(Type);
+static bool match(char);
+static bool end(void);
+static bool start(void);
+static bool isAlpha(char);
+static bool isDec(char);
+static bool isBin(char);
+static bool isOct(char);
+static bool isHex(char);
+
 Tokenizer tokenizer;
 
 void initTokenizer(string code) {
@@ -8,7 +23,7 @@ void initTokenizer(string code) {
 	tokenizer.iterator = -1;
 	tokenizer.tokenStart = 0;
 	tokenizer.line = 1;
-	TArray *tokens = malloc(sizeof(TArray));
+	Array *tokens = malloc(sizeof(Array));
 	initArray(tokens, tokenizer.len/8);
 	tokenizer.tokens = tokens;
 	Array *errors = malloc(sizeof(Array));
@@ -100,8 +115,16 @@ Result *tokenize(string code) {
 				continue;
 			} case '"': {
 				while (peekNext() != '"') {
-					if (peekNext() == '\n') pushArray(tokenizer.errors, Error("Syntax", 1, "unterminated string"));
-					next();
+					if (next() == '\n') {
+						pushArray(tokenizer.errors, error(
+							"Syntax",
+							"temp/index.idk",
+							tokenizer.line, 1,
+							"unterminated string"
+						));
+						tokenizer.line++;
+						break;
+					}
 				}; next(); addToken(STR); continue;
 			} default: {
 				if (match('0')) {

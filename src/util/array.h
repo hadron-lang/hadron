@@ -4,15 +4,15 @@
 #include <malloc.h>
 
 typedef struct Array {
-	int length;
-	int size;
-	void **array;
+	int l; // length
+	int s; // size
+	void **a; // array
 } Array;
 
-Array *newArray(int array_size);
-void initArray(void *array_like, int array_size);
-void trimArray(void *array_like);
-void pushArray(void *array_like, void *element);
-void freeArray(void *array_like);
+extern Array *newArray(int array_size);
+extern void initArray(Array *array, int array_size);
+extern void trimArray(Array *array);
+extern void pushArray(Array *array, void *element);
+extern void freeArray(Array *array);
 
 #endif
