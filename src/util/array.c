@@ -7,29 +7,25 @@ Array *newArray(int s) {
 }
 
 void initArray(Array *a, int s) {
-	Array *p = (Array *)a;
-	p->a = malloc(sizeof(void *) * s);
-	p->l = 0;
-	p->s = s;
+	a->a = malloc(sizeof(void *) * s);
+	a->l = 0;
+	a->s = s;
 }
 
 void trimArray(Array *a) {
-	Array *p = (Array *)a;
-	p->a = realloc(p->a, sizeof(void *) * p->l);
-	p->s = p->l;
+	a->a = realloc(a->a, sizeof(void *) * a->l);
+	a->s = a->l;
 }
 
 void pushArray(Array *a, void *el) {
-	Array *p = (Array *)a;
-	if (p->s == p->l) {
-		p->s *= 1.5;
-		p->a = realloc(p->a, sizeof(void *) * p->s);
+	if (a->s == a->l) {
+		a->s *= 1.5;
+		a->a = realloc(a->a, sizeof(void *) * a->s);
 	}
-	p->a[p->l++] = el;
+	a->a[a->l++] = el;
 }
 
 void freeArray(Array *a) {
-	Array *p = (Array *)a;
-	for (int i = 0; i < p->l; i++) free(p->a[i]);
-	free(p->a);
+	for (int i = 0; i < a->l; i++) free(a->a[i]);
+	free(a->a);
 }
