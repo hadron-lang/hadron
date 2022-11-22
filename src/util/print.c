@@ -1,15 +1,16 @@
 #include "print.h"
+#include <math.h>
 
 static void util_typelog(Typed *, small);
 static void util_log(Typed *, small, small);
 
 void printTokens(string code, Array *tokens) {
 	for (int i = 0; i < tokens->l; i++) {
-		int len = ((Token *)tokens->a[i])->end - ((Token *)tokens->a[i])->start;
+		int len = ((Token *)tokens->a[i])->pos.absoluteEnd - ((Token *)tokens->a[i])->pos.absoluteStart;
 		string substr = malloc(len+1);
-		memcpy(substr, &code[((Token *)tokens->a[i])->start], len);
+		memcpy(substr, &code[((Token *)tokens->a[i])->pos.absoluteStart], len);
 		substr[len] = '\0';
-		printf("type: %i line: %i \x1b[7m%s\x1b[0m\n", ((Token *)tokens->a[i])->type, ((Token*)tokens->a[i])->line, substr);
+		printf("type: %i line: %i \x1b[7m%s\x1b[0m\n", ((Token *)tokens->a[i])->type, ((Token*)tokens->a[i])->pos.start.line, substr);
 		free(substr);
 	}
 }
@@ -76,13 +77,15 @@ static void repeat(string c, int count) {
 }
 
 static void codeError(Error *e) {
-	string white = "\x1b[38;2;157;165;179m";
-	string _white = "\x1b[48;2;157;165;179m";
-	string red = "\x1b[38;2;255;0;0m";
-	string black = "\x1b[38;2;0;0;0m";
-	string blue = "\x1b[38;2;0;0;255m";
+	string white = "\x1b[97m";
+	string _white = "\x1b[97m";
+	string red = "\x1b[91m";
+	string black = "\x1b[97m";
+	string yellow = "\x1b[93m";
+	string blue = "\x1b[94;3m";
 	string clear = "\x1b[0m";
 	string bold = "\x1b[1m";
+	string underline = "\x1b[4m";
 	FILE *fp = fopen(e->file, "r");
 	char *line;
 	size_t len;
@@ -96,21 +99,28 @@ static void codeError(Error *e) {
 	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 	size_t errlen = strlen(e->file) + strlen(e->name) + strlen(e->data) + 14;
 	if (errlen < w.ws_col) {
-		printf("%s────┬─%s%s%s %s %s%s─%s%s%s %s %s%s─%s%s%s %s %s%s",
-			white, _white, bold, blue, e->file, clear,
+		printf("%s────┬─%s%s%s %s %s%s─%s%s%s %s%s:%s%i%s:%s%i %s%s─%s%s%s %s %s%s",
 			white, _white, bold, red, e->name, clear,
+			white, _white, bold, blue, e->file, clear,
+			yellow, e->token->pos.start.line, clear,
+			yellow, e->token->pos.start.character, clear,
 			white, _white, bold, black, e->data, clear, white
 		);
-		repeat("─", w.ws_col - errlen);
+		repeat("─", w.ws_col - 2 - errlen - ceil(log10(e->token->pos.start.line * e->token->pos.start.character)));
 		printf("%s", clear);
 	}
 	printf("\n");
 	while ((read = getline(&line, &len, fp)) != -1UL) {
 		++l;
-		if (l == e->line-1 || l == e->line+1) {
+		if (l == e->token->pos.start.line-1 || l == e->token->pos.start.line+1) {
 			printf("%s %i │%s %s", white, l, clear, line);
-		} else if (l == e->line) {
-			printf("%s %i │%s %s", white, l, clear, line);
+		} else if (l == e->token->pos.start.line) {
+			string start = malloc(strlen(line)+1);
+			memcpy(start, line, e->token->pos.start.character-1);
+			start[e->token->pos.start.character-1] = '\0';
+			string error = malloc(strlen(line)+1);
+			memcpy(error, line+e->token->pos.start.character-1, e->token->pos.absoluteEnd - e->token->pos.absoluteStart);
+			printf("%s %i │%s %s%s%s%s%s", white, l, clear, start, underline, "\x1b[91m", error, clear);
 		}
 	}
 	if (w.ws_col >= 5) {
@@ -133,10 +143,5 @@ void printErrors(Array *array) {
 				break;
 			}
 		}
-		// if (error->line <= 0) {
-		// 	printf("%s\n", error->data);
-		// } else {
-		// 	codeError(error);
-		// }
 	}
 }

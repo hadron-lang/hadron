@@ -12,10 +12,10 @@ typedef enum __attribute__((__packed__)) ErrorTypes {
 
 typedef struct Error {
 	ErrorType type;
-	int line;
 	string file;
 	string name;
 	string data;
+	Token *token;
 } Error;
 typedef struct CLIError {
 	ErrorType type;
@@ -26,6 +26,6 @@ typedef struct ErrorLike {
 } ErrorLike;
 
 extern CLIError *clierror(int arg_count, ...);
-extern Error *error(string error_name, string file, int line, int arg_count, ...);
+extern Error *error(string error_name, string file, string data, Token* token);
 
 #endif

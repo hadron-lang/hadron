@@ -1,17 +1,15 @@
 SRC=$(shell find src/ -name '*.c') main.c
-CARGS=-Wall -Wextra -g
+CARGS=-Wall -Wextra -g -lm
+COMPILE=gcc -o out/debug.bin $(SRC) $(CARGS)
 
-gdb:
-	@clear
-	gcc -o out/debug.bin $(CARGS) $(SRC)
 gcc:
 	@clear
-	gcc -o out/debug.bin $(SRC)
+	$(COMPILE)
 run:
 	@clear
-	gcc -o out/debug.bin $(SRC)
+	$(COMPILE)
 	@./out/debug.bin temp/index.idk
 debug:
 	@clear
-	gcc -o out/debug.bin $(CARGS) $(SRC)
+	$(COMPILE)
 	@gdb -ex=r\ temp/index.idk -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin

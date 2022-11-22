@@ -25,7 +25,8 @@ void pushArray(Array *a, void *el) {
 	a->a[a->l++] = el;
 }
 
+// Warning: `a` will be unusable after this point
 void freeArray(Array *a) {
 	for (int i = 0; i < a->l; i++) free(a->a[i]);
-	free(a->a);
+	free(a->a); free(a);
 }

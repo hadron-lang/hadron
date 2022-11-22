@@ -20,28 +20,15 @@ CLIError *clierror(int argc, ...) {
 	return err;
 }
 
-Error *error(string name, string file, int line, int argcount, ...) {
+Error *error(string name, string file, string data, Token *token) {
+	Error *err = malloc(sizeof(Error));
 	string n = malloc(strlen("Error") + strlen(name) + 1);
 	strcpy(n, name);
 	strcat(n, "Error");
-	va_list v0;
-	va_list v1;
-	va_start(v0, argcount);
-	size_t s = strlen(name);
-	for (small i = 1; i <= argcount; i++) {
-		s += strlen(va_arg(v0, string)) + 4;
-	}; va_end(v0);
-	string e = malloc(s + 1);
-	strcpy(e, "");
-	va_start(v1, argcount);
-	for (small i = 1; i <= argcount; i++) {
-		strcat(e, va_arg(v1, string));
-	}; va_end(v1);
-	Error *err = malloc(sizeof(Error));
 	err->type = ERROR;
 	err->name = n;
 	err->file = file;
-	err->data = e;
-	err->line = line;
+	err->data = data;
+	err->token = token;
 	return err;
 };

@@ -17,8 +17,9 @@ typedef enum __attribute__((__packed__)) Langs {
 
 typedef struct Args {
 	Lang lang;
-	string file;
 	small mode;
+	bool set;
+	string file;
 } Args;
 
 int main(int, string *);

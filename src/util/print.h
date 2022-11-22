@@ -7,6 +7,7 @@
 #include "../types.h"
 #include "array.h"
 #include "../errors.h"
+#include "../tokenizer.h"
 
 extern void printTokens(string file_contents, Array *tokens);
 extern void printAST(Program *program, small depth);

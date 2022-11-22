@@ -56,6 +56,8 @@ typedef enum __attribute__((__packed__)) Types {
 	NEW,
 	AWAIT,
 	AS,
+	ASYNC,
+	RET,
 
 	// TYPE
 	STR,      //* "hello world"
@@ -93,22 +95,22 @@ typedef enum __attribute__((__packed__)) Types {
 	REM     //* %
 } Type;
 
+typedef struct Point {
+	int line;
+	int character;
+} Point;
+
+typedef struct Position {
+	Point start;
+	Point end;
+	int absoluteStart;
+	int absoluteEnd;
+} Position;
+
 typedef struct Token {
 	Type type;
-	int line;
-	int start;
-	int end;
+	Position pos;
 } Token;
-
-typedef struct Tokenizer {
-	int line;
-	int iterator;
-	int tokenStart;
-	int len;
-	Array *tokens;
-	Array *errors;
-	string code;
-} Tokenizer;
 
 typedef enum __attribute__((__packed__)) AST_Types {
 	PROGRAM = 1,
@@ -136,14 +138,6 @@ typedef struct ImportDeclaration { // extends Typed
 	string source;
 	Array *specifiers;
 } ImportDeclaration;
-
-typedef struct Parser {
-	int iterator;
-	Array *tokens;
-	Program *program;
-	Array *errors;
-	string code;
-} Parser;
 
 typedef struct Result {
 	Array *errors;

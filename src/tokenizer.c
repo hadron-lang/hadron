@@ -5,7 +5,7 @@ static char next(void);
 static char peekNext(void);
 // static char peekPrev(void);
 static char current(void);
-static void addToken(Type);
+static Token *addToken(Type);
 static bool match(char);
 static bool end(void);
 static bool start(void);
@@ -15,20 +15,28 @@ static bool isBin(char);
 static bool isOct(char);
 static bool isHex(char);
 
-Tokenizer tokenizer;
+struct Tokenizer {
+	Position token;
+	int line;
+	int iterator;
+	int character;
+	int length;
+	Array *tokens;
+	Array *errors;
+	string code;
+} tokenizer;
 
 void initTokenizer(string code) {
+	if (tokenizer.tokens) freeArray(tokenizer.tokens);
+	if (tokenizer.errors) freeArray(tokenizer.errors);
 	tokenizer.code = code;
-	tokenizer.len = strlen(code);
+	tokenizer.length = strlen(code);
 	tokenizer.iterator = -1;
-	tokenizer.tokenStart = 0;
+	tokenizer.token = (Position){ { 1, 1 }, { 1, 1 }, 1, 1 };
 	tokenizer.line = 1;
-	Array *tokens = malloc(sizeof(Array));
-	initArray(tokens, tokenizer.len/8);
-	tokenizer.tokens = tokens;
-	Array *errors = malloc(sizeof(Array));
-	initArray(errors, 2);
-	tokenizer.errors = errors;
+	tokenizer.character = 1;
+	tokenizer.tokens = newArray(tokenizer.length/8);
+	tokenizer.errors = newArray(2);
 }
 
 Result *tokenize(string code) {
@@ -36,7 +44,8 @@ Result *tokenize(string code) {
 	char c;
 	while (!end()) {
 		c = next();
-		tokenizer.tokenStart = tokenizer.iterator;
+		tokenizer.token.start = (Point){ tokenizer.line, tokenizer.character-1 };
+		tokenizer.token.absoluteStart = tokenizer.iterator;
 		switch (c) {
 			case '@': addToken(AT); continue;
 			case '.': addToken(DOT); continue;
@@ -46,7 +55,6 @@ Result *tokenize(string code) {
 			case '[': case ']': addToken(BRACKET); continue;
 			case '(': case ')': addToken(PAREN); continue;
 			case '\0': addToken(_EOF); continue;
-			case '\n': tokenizer.line++; continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
 				else if (match('+')) addToken(INCR);
@@ -86,9 +94,7 @@ Result *tokenize(string code) {
 				continue;
 			} case '/': {
 				if (match('/')) while (peekNext() != '\n' && !end()) next();
-				else if (match('*')) { while (!(next() == '*' && next() == '/') && !end()) {
-					if (peekNext() == '\n') tokenizer.line++;
-				}; tokenizer.line++; }
+				else if (match('*')) { while (!(next() == '*' && next() == '/') && !end()); }
 				else addToken(DIV);
 				continue;
 			} case '=': {
@@ -114,18 +120,15 @@ Result *tokenize(string code) {
 				else addToken(REM);
 				continue;
 			} case '"': {
+				bool err = false;
 				while (peekNext() != '"') {
-					if (next() == '\n') {
-						pushArray(tokenizer.errors, error(
-							"Syntax",
-							"temp/index.idk",
-							tokenizer.line, 1,
-							"unterminated string"
-						));
-						tokenizer.line++;
-						break;
-					}
-				}; next(); addToken(STR); continue;
+					if (next() == '\n') { err = true; break; }
+				}; next();
+				Token *token = addToken(STR);
+				if (err) pushArray(tokenizer.errors, error(
+					"Syntax", "temp/index.idk",
+					"unterminated string", token
+				)); continue;
 			} default: {
 				if (match('0')) {
 					char base = next();
@@ -143,9 +146,9 @@ Result *tokenize(string code) {
 				}
 				if (isAlpha(current())) {
 					while (isAlpha(peekNext()) || isDec(peekNext())) next();
-					int len = tokenizer.iterator+1 - tokenizer.tokenStart;
+					int len = tokenizer.iterator+1 - tokenizer.token.absoluteStart;
 					string substr = malloc(len+1);
-					memcpy(substr, &code[tokenizer.tokenStart], len);
+					memcpy(substr, &code[tokenizer.token.absoluteStart], len);
 					substr[len] = '\0';
 					if (!strcmp(substr, "for")) { addToken(FOR); free(substr); continue; }
 					if (!strcmp(substr, "class")) { addToken(CLASS); free(substr); continue; }
@@ -162,6 +165,8 @@ Result *tokenize(string code) {
 					if (!strcmp(substr, "new")) { addToken(NEW); free(substr); continue; }
 					if (!strcmp(substr, "await")) { addToken(AWAIT); free(substr); continue; }
 					if (!strcmp(substr, "as")) { addToken(AS); free(substr); continue; }
+					if (!strcmp(substr, "async")) { addToken(ASYNC); free(substr); continue; }
+					if (!strcmp(substr, "ret")) { addToken(RET); free(substr); continue; }
 					addToken(NAME); free(substr);
 				}; continue;
 			};
@@ -174,13 +179,15 @@ Result *tokenize(string code) {
 	return result;
 }
 
-void addToken(Type type) {
+Token *addToken(Type type) {
 	Token *token = malloc(sizeof(Token));
 	token->type = type;
-	token->line = tokenizer.line;
-	token->start = tokenizer.tokenStart;
-	token->end = tokenizer.iterator+1;
+	token->pos.absoluteStart = tokenizer.token.absoluteStart;
+	token->pos.absoluteEnd = tokenizer.iterator+1;
+	token->pos.start = tokenizer.token.start;
+	token->pos.end = (Point){ tokenizer.line, tokenizer.character };
 	pushArray(tokenizer.tokens, token);
+	return token;
 };
 char peekNext() {
 	if (!end()) return tokenizer.code[tokenizer.iterator+1];
@@ -191,11 +198,15 @@ char peekPrev() {
 	else return '\0';
 }
 char next() {
-	if (!end()) return tokenizer.code[++tokenizer.iterator];
-	else return '\0';
+	char r = !end() ? tokenizer.code[++tokenizer.iterator] : '\0';
+	tokenizer.character++;
+	if (r == '\n') {
+		tokenizer.line++;
+		tokenizer.character = 1;
+	}; return r;
 }
 char current() { return tokenizer.code[tokenizer.iterator]; }
-bool end() { return tokenizer.iterator > tokenizer.len-1; }
+bool end() { return tokenizer.iterator > tokenizer.length-1; }
 bool start() { return tokenizer.iterator < 1; }
 bool match(char c) {
 	if (peekNext() == c) { next(); return true; }
