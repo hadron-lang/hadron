@@ -3,9 +3,7 @@
 Program *initProgram(int s) {
 	Program *prg = malloc(sizeof(Program));
 	prg->type = PROGRAM;
-	Array *body = malloc(sizeof(Array));
-	initArray(body, s);
-	prg->body = body;
+	prg->body = newArray(s);
 	return prg;
 }
 void freeProgram(Program *program) {

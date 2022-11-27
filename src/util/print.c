@@ -3,14 +3,131 @@
 
 static void util_typelog(Typed *, small);
 static void util_log(Typed *, small, small);
+static void repeat(string, int);
+static size_t utflen(string);
+static string utfsubstr(string, int, int);
+static string utfcat(string, string);
+static string substr(string, int, int);
+
+size_t utflen(string s) {
+   size_t l = 0; for (size_t i = 0; i < strlen(s); i++, l++) {
+		if      ((s[i] & 0xe0) == 0xc0) l -= 1;
+		else if ((s[i] & 0xf0) == 0xe0) l -= 2;
+		else if ((s[i] & 0xf8) == 0xf0) l -= 3;
+   }; return l;
+}
+string utfsubstr(string s, int start, int l) {
+	size_t rl = 0;
+	for (int i = 0; i < l; i++, rl++) {
+		char c = s[start+rl];
+		if      ((c & 0xe0) == 0xc0) rl+=1;
+		else if ((c & 0xf0) == 0xe0) rl+=2;
+		else if ((c & 0xf8) == 0xf0) rl+=3;
+	}
+	string sub = malloc(rl);
+	memcpy(sub, s+start, rl);
+	sub[rl] = 0;
+	return sub;
+}
+string utfcat(string a, string b) {
+	size_t len = strlen(a) + strlen(b);
+	string cat = malloc(len);
+	strcpy(cat, a);
+	strcat(cat, b);
+	cat[len] = 0;
+	return cat;
+}
+string substr(string s, int start, int l) {
+	string sub = (string)malloc(l+1);
+	memcpy(sub, s+start, l);
+	sub[l] = 0;
+	return sub;
+}
+
+void repeat(string c, int count) {
+	for (int i = 0; i < count; i++) printf("%s", c);
+}
+int intl(int x) {
+	if (x == 0) return 1;
+	else {
+		// printf("%i %f\n", x, ceil(log10(x*10)-1));
+		return (int)ceil(log10(x*10+1)-1);
+	};
+}
+
+void printToken(Token* t) {
+	string key0 = "\x1b[94m";
+	string key1 = "\x1b[96m";
+	string value = "\x1b[93m";
+	string clear = "\x1b[0m";
+	string italic = "\x1b[3m";
+	printf("%s\x1b[37mToken%s ", italic, clear);
+	printf("{ %stype%s: ", key0, clear);
+	printf("%s%i%s, %spos%s: { %sline%s: ", value, t->type, clear, key0, clear, key1, clear);
+	printf("%s%i%s, %sstart%s: ", value, t->pos.line, clear, key1, clear);
+	printf("%s%i%s, %send%s: ", value, t->pos.start, clear, key1, clear);
+	printf("%s%i%s, %sabsStart%s: ", value, t->pos.end, clear, key1, clear);
+	printf("%s%i%s, %sabsEnd%s: ", value, t->pos.absStart, clear, key1, clear);
+	printf("%s%i%s }\n", value, t->pos.absEnd, clear);
+}
 
 void printTokens(string code, Array *tokens) {
+	int align[8] = { 0, 0, 0, 0, 0, 0, 0, 10 };
 	for (int i = 0; i < tokens->l; i++) {
-		int len = ((Token *)tokens->a[i])->pos.absoluteEnd - ((Token *)tokens->a[i])->pos.absoluteStart;
-		string substr = malloc(len+1);
-		memcpy(substr, &code[((Token *)tokens->a[i])->pos.absoluteStart], len);
-		substr[len] = '\0';
-		printf("type: %i line: %i \x1b[7m%s\x1b[0m\n", ((Token *)tokens->a[i])->type, ((Token*)tokens->a[i])->pos.start.line, substr);
+		Token *t = (Token *)tokens->a[i];
+		int l0 = intl(t->type);
+		int l1 = intl(t->pos.line);
+		int l2 = intl(t->pos.start);
+		int l3 = intl(t->pos.end);
+		int l4 = intl(t->pos.absStart);
+		int l5 = intl(t->pos.absEnd);
+		int l6 = intl(i);
+		if (l0 > align[0]) align[0] = l0;
+		if (l1 > align[1]) align[1] = l1;
+		if (l2 > align[2]) align[2] = l2;
+		if (l3 > align[3]) align[3] = l3;
+		if (l4 > align[4]) align[4] = l4;
+		if (l5 > align[5]) align[5] = l5;
+		if (l6 > align[6]) align[6] = l6;
+	}
+	for (int i = 0; i < tokens->l; i++) {
+		Token *t = (Token*)tokens->a[i];
+		int len = t->pos.absEnd - t->pos.absStart;
+		string substr = malloc(len);
+		memcpy(substr, code+t->pos.absStart, len);
+		substr[len] = 0;
+		int rlen = utflen(substr);
+		string key0 = "\x1b[94m";
+		string key1 = "\x1b[96m";
+		string value = "\x1b[93m";
+		string clear = "\x1b[0m";
+		string token = "\x1b[92m";
+		string italic = "\x1b[3m";
+		if (rlen > align[7]) {
+			free(substr);
+			substr = utfsubstr(code, t->pos.absStart, align[7]-3);
+			substr = utfcat(substr, "\x1b[90m...");
+			rlen = align[7];
+		}
+		if (t->type == _EOF) { strcpy(substr, "\\0"); rlen = 2; };
+		printf("%s\x1b[37mToken%s", italic, clear);
+		// printf("%s\x1b[37mToken%i%s", italic, i, clear);
+		// repeat(" ", align[6]-intl(i));
+		printf("<%s%s%s>", token, substr, clear);
+		repeat(" ", align[7] - rlen);
+		printf("{ %stype%s: ", key0, clear);
+		repeat(" ", align[0] - intl(t->type));
+		printf("%s%i%s, %spos%s: { %sline%s: ", value, t->type, clear, key0, clear, key1, clear);
+		repeat(" ", align[1] - intl(t->pos.line));
+		printf("%s%i%s, %sstart%s: ", value, t->pos.line, clear, key1, clear);
+		repeat(" ", align[2] - intl(t->pos.start));
+		printf("%s%i%s, %send%s: ", value, t->pos.start, clear, key1, clear);
+		repeat(" ", align[3] - intl(t->pos.end));
+		printf("%s%i%s, %sabsStart%s: ", value, t->pos.end, clear, key1, clear);
+		repeat(" ", align[4] - intl(t->pos.absStart));
+		printf("%s%i%s, %sabsEnd%s: ", value, t->pos.absStart, clear, key1, clear);
+		repeat(" ", align[5] - intl(t->pos.absEnd));
+		printf("%s%i%s }\n", value, t->pos.absEnd, clear);
 		free(substr);
 	}
 }
@@ -32,7 +149,7 @@ void util_typelog(Typed *v, small indent) {
 }
 
 void util_log(Typed *v, small indent, small depth) {
-	if (indent == depth) return util_typelog(v, indent);
+	if (indent == depth) { util_typelog(v, indent); return; }
 	for (small i = 0; i < indent; i++) printf("  ");
 	switch (v->type) {
 		case PROGRAM: {
@@ -72,11 +189,17 @@ void printAST(Program *p, small depth) {
 	printf("\n");
 }
 
-static void repeat(string c, int count) {
-	for (int i = 0; i < count; i++) printf("%s", c);
-}
+// int utflen(string s) {
+// 	size_t l = 0; for (size_t i = 0; i < strlen(s); i++, l++) {
+// 		if      ((s[i] & 0x80) == 0x00);
+// 		else if ((s[i] & 0xc0) == 0x80);
+// 		else if ((s[i] & 0xe0) == 0xc0) l -= 1;
+// 		else if ((s[i] & 0xf0) == 0xe0) l -= 2;
+// 		else if ((s[i] & 0xf8) == 0xf0) l -= 3;
+// 	}; return l;
+// }
 
-static void codeError(Error *e) {
+void codeError(Error *e) {
 	string white = "\x1b[97m";
 	string _white = "\x1b[97m";
 	string red = "\x1b[91m";
@@ -85,49 +208,62 @@ static void codeError(Error *e) {
 	string blue = "\x1b[94;3m";
 	string clear = "\x1b[0m";
 	string bold = "\x1b[1m";
-	string underline = "\x1b[4m";
 	FILE *fp = fopen(e->file, "r");
-	char *line;
-	size_t len;
-	size_t read;
+	string line = NULL;
+	size_t len = 0;
+	size_t read = 0;
 	int l = 0;
 	if (fp == NULL) {
 		printf("weird\n");
 		return;
 	}
-	struct winsize w;
-	ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-	size_t errlen = strlen(e->file) + strlen(e->name) + strlen(e->data) + 14;
-	if (errlen < w.ws_col) {
-		printf("%s────┬─%s%s%s %s %s%s─%s%s%s %s%s:%s%i%s:%s%i %s%s─%s%s%s %s %s%s",
-			white, _white, bold, red, e->name, clear,
+	struct winsize *w = malloc(sizeof(struct winsize));
+	ioctl(STDOUT_FILENO, TIOCGWINSZ, w);
+	int lnl = intl(e->token->pos.line+1);
+	size_t errlen = strlen(e->file) + strlen(e->name) + strlen(e->data) + 14 + lnl;
+	if (errlen < w->ws_col) {
+		printf("%s", clear);
+		repeat("─", intl(e->token->pos.line+1) + 2);
+		printf("┬─%s%s%s %s %s%s─%s%s%s %s%s:%s%i%s:%s%i %s%s─%s%s%s %s %s%s",
+			_white, bold, red, e->name, clear,
 			white, _white, bold, blue, e->file, clear,
-			yellow, e->token->pos.start.line, clear,
-			yellow, e->token->pos.start.character, clear,
+			yellow, e->token->pos.line, clear,
+			yellow, e->token->pos.start, clear,
 			white, _white, bold, black, e->data, clear, white
 		);
-		repeat("─", w.ws_col - 2 - errlen - ceil(log10(e->token->pos.start.line * e->token->pos.start.character)));
+		repeat("─", w->ws_col - errlen - intl(e->token->pos.line) - intl(e->token->pos.start));
 		printf("%s", clear);
 	}
 	printf("\n");
 	while ((read = getline(&line, &len, fp)) != -1UL) {
 		++l;
-		if (l == e->token->pos.start.line-1 || l == e->token->pos.start.line+1) {
-			printf("%s %i │%s %s", white, l, clear, line);
-		} else if (l == e->token->pos.start.line) {
-			string start = malloc(strlen(line)+1);
-			memcpy(start, line, e->token->pos.start.character-1);
-			start[e->token->pos.start.character-1] = '\0';
-			string error = malloc(strlen(line)+1);
-			memcpy(error, line+e->token->pos.start.character-1, e->token->pos.absoluteEnd - e->token->pos.absoluteStart);
-			printf("%s %i │%s %s%s%s%s%s", white, l, clear, start, underline, "\x1b[91m", error, clear);
+		if (l == e->token->pos.line-1 || l == e->token->pos.line+1) {
+			printf("%s ", white);
+			repeat(" ", lnl - intl(l));
+			printf("%i │%s %s", l, clear, line);
+		} else if (l == e->token->pos.line) {
+			int lens[3] = {
+				e->token->pos.start-1,
+				e->token->pos.absEnd - e->token->pos.absStart,
+				strlen(line)-e->token->pos.end
+			};
+			string start = substr(line, 0, lens[0]);
+			string error = substr(line, lens[0], lens[1]);
+			string end = substr(line, lens[0]+lens[1], lens[2]);
+			printf("%s ", white);
+			repeat(" ", lnl - intl(l));
+			printf("%i │%s %s%s%s%s%s\n", l, clear, start, red, error, clear, end);
+			free(start); free(error); free(end);
 		}
 	}
-	if (w.ws_col >= 5) {
-		printf("%s────┴", white);
-		repeat("─", w.ws_col - 5);
+	if (w->ws_col >= 5) {
+		printf("%s", white);
+		repeat("─", intl(e->token->pos.line+1)+2);
+		printf("┴");
+		repeat("─", w->ws_col - 1 - intl(e->token->pos.line+1)-2);
 		printf("%s\n", clear);
 	}
+	free(w);
 }
 
 void printErrors(Array *array) {

@@ -14,5 +14,6 @@ extern void initArray(Array *array, int array_size);
 extern void trimArray(Array *array);
 extern void pushArray(Array *array, void *element);
 extern void freeArray(Array *array);
+extern void *popArray(Array *array);
 
 #endif

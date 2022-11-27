@@ -6,6 +6,6 @@
 #include "types.h"
 #include "errors.h"
 
-extern Result *tokenize(string);
+extern Result *tokenize(string, string);
 
 #endif

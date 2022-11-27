@@ -32,29 +32,32 @@ void initTokenizer(string code) {
 	tokenizer.code = code;
 	tokenizer.length = strlen(code);
 	tokenizer.iterator = -1;
-	tokenizer.token = (Position){ { 1, 1 }, { 1, 1 }, 1, 1 };
+	tokenizer.token = (Position){ 1, 1, 1, 1, 1 };
 	tokenizer.line = 1;
 	tokenizer.character = 1;
 	tokenizer.tokens = newArray(tokenizer.length/8);
 	tokenizer.errors = newArray(2);
 }
 
-Result *tokenize(string code) {
+Result *tokenize(string code, string fname) {
 	initTokenizer(code);
 	char c;
 	while (!end()) {
 		c = next();
-		tokenizer.token.start = (Point){ tokenizer.line, tokenizer.character-1 };
-		tokenizer.token.absoluteStart = tokenizer.iterator;
+		tokenizer.token.start = tokenizer.character-1;
+		tokenizer.token.absStart = tokenizer.iterator;
 		switch (c) {
 			case '@': addToken(AT); continue;
 			case '.': addToken(DOT); continue;
 			case ',': addToken(SEP); continue;
+			case '#': addToken(HASH); continue;
 			case ';': addToken(DELMT); continue;
+			case ':': addToken(COLON); continue;
 			case '{': case '}': addToken(CBRACKET); continue;
 			case '[': case ']': addToken(BRACKET); continue;
 			case '(': case ')': addToken(PAREN); continue;
 			case '\0': addToken(_EOF); continue;
+			case '\n': case ' ': case '\t': continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
 				else if (match('+')) addToken(INCR);
@@ -69,6 +72,13 @@ Result *tokenize(string code) {
 				if (match('=')) addToken(MUL_EQ);
 				else if (match('=')) addToken(POW);
 				else addToken(MUL);
+				continue;
+			} case '!': {
+				if (match('=')) addToken(CMP_NEQ);
+				else addToken(LNOT);
+				continue;
+			} case '?': {
+				addToken(QUERY);
 				continue;
 			} case '|': {
 				if (match('|')) {
@@ -122,15 +132,27 @@ Result *tokenize(string code) {
 			} case '"': {
 				bool err = false;
 				while (peekNext() != '"') {
-					if (next() == '\n') { err = true; break; }
-				}; next();
-				Token *token = addToken(STR);
-				if (err) pushArray(tokenizer.errors, error(
-					"Syntax", "temp/index.idk",
-					"unterminated string", token
-				)); continue;
+					if (peekNext() == '\n') { err = true; break; }
+					if (current() == '\\') next();
+					next();
+				}; if (err) pushArray(tokenizer.errors, error(
+					"Syntax", fname, "unterminated string", addToken(STR)
+				)); else {
+					next(); addToken(STR);
+				}; continue;
+			} case '\'': {
+				bool err = false;
+				while (peekNext() != '\'') {
+					if (peekNext() == '\n') { err = true; break; }
+					if (current() == '\\') next();
+					next();
+				}; if (err) pushArray(tokenizer.errors, error(
+					"Syntax", fname, "unterminated string", addToken(STR)
+				)); else {
+					next(); addToken(STR);
+				}; continue;
 			} default: {
-				if (match('0')) {
+				if (current() == '0') {
 					char base = next();
 					if (base == 'o') {
 						while (isOct(peekNext())) { next(); }
@@ -139,36 +161,46 @@ Result *tokenize(string code) {
 					} else if (base == 'x') {
 						while (isHex(peekNext())) { next(); }
 					}
+					continue;
 				}
 				if (isDec(current())) {
 					while (isDec(peekNext())) next();
 					addToken(DEC);
+					continue;
 				}
 				if (isAlpha(current())) {
 					while (isAlpha(peekNext()) || isDec(peekNext())) next();
-					int len = tokenizer.iterator+1 - tokenizer.token.absoluteStart;
+					int len = tokenizer.iterator+1 - tokenizer.token.absStart;
 					string substr = malloc(len+1);
-					memcpy(substr, &code[tokenizer.token.absoluteStart], len);
+					memcpy(substr, &code[tokenizer.token.absStart], len);
 					substr[len] = '\0';
-					if (!strcmp(substr, "for")) { addToken(FOR); free(substr); continue; }
-					if (!strcmp(substr, "class")) { addToken(CLASS); free(substr); continue; }
-					if (!strcmp(substr, "func")) { addToken(FUNC); free(substr); continue; }
-					if (!strcmp(substr, "true")) { addToken(TRUE); free(substr); continue; }
-					if (!strcmp(substr, "false")) { addToken(FALSE); free(substr); continue; }
-					if (!strcmp(substr, "null")) { addToken(_NULL); free(substr); continue; }
-					if (!strcmp(substr, "while")) { addToken(WHILE); free(substr); continue; }
-					if (!strcmp(substr, "if")) { addToken(IF); free(substr); continue; }
-					if (!strcmp(substr, "do")) { addToken(DO); free(substr); continue; }
-					if (!strcmp(substr, "else")) { addToken(ELSE); free(substr); continue; }
-					if (!strcmp(substr, "from")) { addToken(FROM); free(substr); continue; }
-					if (!strcmp(substr, "import")) { addToken(IMPORT); free(substr); continue; }
-					if (!strcmp(substr, "new")) { addToken(NEW); free(substr); continue; }
-					if (!strcmp(substr, "await")) { addToken(AWAIT); free(substr); continue; }
-					if (!strcmp(substr, "as")) { addToken(AS); free(substr); continue; }
-					if (!strcmp(substr, "async")) { addToken(ASYNC); free(substr); continue; }
-					if (!strcmp(substr, "ret")) { addToken(RET); free(substr); continue; }
-					addToken(NAME); free(substr);
-				}; continue;
+					if      (!strcmp(substr, "for"   )) addToken(FOR);
+					else if (!strcmp(substr, "class" )) addToken(CLASS);
+					else if (!strcmp(substr, "func"  )) addToken(FUNC);
+					else if (!strcmp(substr, "true"  )) addToken(TRUE);
+					else if (!strcmp(substr, "false" )) addToken(FALSE);
+					else if (!strcmp(substr, "null"  )) addToken(_NULL);
+					else if (!strcmp(substr, "while" )) addToken(WHILE);
+					else if (!strcmp(substr, "if"    )) addToken(IF);
+					else if (!strcmp(substr, "do"    )) addToken(DO);
+					else if (!strcmp(substr, "else"  )) addToken(ELSE);
+					else if (!strcmp(substr, "from"  )) addToken(FROM);
+					else if (!strcmp(substr, "import")) addToken(IMPORT);
+					else if (!strcmp(substr, "new"   )) addToken(NEW);
+					else if (!strcmp(substr, "await" )) addToken(AWAIT);
+					else if (!strcmp(substr, "as"    )) addToken(AS);
+					else if (!strcmp(substr, "async" )) addToken(ASYNC);
+					else if (!strcmp(substr, "ret"   )) addToken(RET);
+					else addToken(NAME);
+					free(substr); continue;
+				};
+				if      ((current() & 0x80) == 0x00);                            // 1xxxxxxx == 0xxxxxxx
+				else if ((current() & 0xe0) == 0xc0) { next(); }                 // 111xxxxx == 110xxxxx
+				else if ((current() & 0xf0) == 0xe0) { next(); next(); }         // 1111xxxx == 1110xxxx
+				else if ((current() & 0xf8) == 0xf0) { next(); next(); next(); } // 11111xxx == 11110xxx
+				Token* t = addToken(UNDEF);
+				pushArray(tokenizer.errors, error("Syntax", fname, "unexpected token", t));
+				continue;
 			};
 		}
 	}
@@ -182,23 +214,18 @@ Result *tokenize(string code) {
 Token *addToken(Type type) {
 	Token *token = malloc(sizeof(Token));
 	token->type = type;
-	token->pos.absoluteStart = tokenizer.token.absoluteStart;
-	token->pos.absoluteEnd = tokenizer.iterator+1;
+	token->pos.absStart = tokenizer.token.absStart;
+	token->pos.absEnd = tokenizer.iterator+1;
 	token->pos.start = tokenizer.token.start;
-	token->pos.end = (Point){ tokenizer.line, tokenizer.character };
+	token->pos.end = tokenizer.character;
+	token->pos.line = tokenizer.line;
 	pushArray(tokenizer.tokens, token);
 	return token;
-};
-char peekNext() {
-	if (!end()) return tokenizer.code[tokenizer.iterator+1];
-	else return '\0';
 }
-char peekPrev() {
-	if (!start()) return tokenizer.code[tokenizer.iterator-1];
-	else return '\0';
-}
+char peekNext() { return end() ? 0 : tokenizer.code[tokenizer.iterator+1]; }
+char peekPrev() { return start() ? 0 : tokenizer.code[tokenizer.iterator-1]; }
 char next() {
-	char r = !end() ? tokenizer.code[++tokenizer.iterator] : '\0';
+	char r = !end() ? tokenizer.code[++tokenizer.iterator] : 0;
 	tokenizer.character++;
 	if (r == '\n') {
 		tokenizer.line++;

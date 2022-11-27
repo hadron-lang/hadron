@@ -31,4 +31,4 @@ Error *error(string name, string file, string data, Token *token) {
 	err->data = data;
 	err->token = token;
 	return err;
-};
+}

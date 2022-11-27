@@ -1,5 +1,10 @@
 #include "main.h"
 
+static int check(Array *, bool);
+static bool isLang(string);
+static bool isFile(string);
+static Lang parseLang(string);
+
 int main(int argc, string *argv) {
 	Args args = { 0, 0, false, NULL };
 	Array *errors = newArray(1);
@@ -22,7 +27,8 @@ int main(int argc, string *argv) {
 	if (!args.mode && args.lang) pushArray(errors, clierror(1, "language is not available in interpreter"));
 	if (/*args.mode &&*/ !args.file) pushArray(errors, clierror(1, "you should provide at least one file to compile"));
 	if (args.mode && !args.lang) pushArray(errors, clierror(1, "you should choose one language to compile to"));
-	FILE *fp = fopen(args.file, "r");
+	if (check(errors, false)) return -1;
+	FILE *fp = fopen(args.file, "rb");
 	if (fp == NULL) {
 		string e0 = "file \x1b[97m";
 		string e = malloc(strlen(e0) + strlen(args.file) + 1);
@@ -31,40 +37,41 @@ int main(int argc, string *argv) {
 		pushArray(errors, clierror(2, e, " does not exist"));
 		free(e);
 	}
-	if (check(errors)) return -1;
+	if (check(errors, true)) return -1;
 
 	fseek(fp, 0, SEEK_END);
 	long fsize = ftell(fp);
-	fseek(fp, 0, 0);
+	rewind(fp);
 
 	string contents = malloc(fsize);
 	fread(contents, fsize, true, fp);
+	contents[fsize-1] = 0;
 
 	fclose(fp);
 
-	Result *t = tokenize(contents);
-	free(contents);
-	if (check(t->errors)) return -1;
+	Result *t = tokenize(contents, args.file);
+	if (check(t->errors, true)) return -1;
 
 	// printTokens(contents, t->data);
 
-	Result *p = parse(contents, t->data);
-	// freeArray(t->data);
-	if (check(p->errors)) return -1;
+	Result *p = parse(contents, t->data, args.file);
+	if (check(p->errors, true)) return -1;
 
 	printAST(p->data, 2);
 
+	free(contents);
+	freeArray(t->data);
 	free(t);
-	// free(p);
+	freeArray(p->data);
+	free(p);
 }
 
-int check(Array *errors) {
+int check(Array *errors, bool drop) {
 	if (errors->l) {
 		printErrors(errors);
-		freeArray(errors);
+		if (drop) freeArray(errors);
 		return 1;
-	};
-	freeArray(errors);
+	}; if (drop) freeArray(errors);
 	return 0;
 }
 

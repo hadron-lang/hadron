@@ -30,3 +30,7 @@ void freeArray(Array *a) {
 	for (int i = 0; i < a->l; i++) free(a->a[i]);
 	free(a->a); free(a);
 }
+
+void *popArray(Array *a) {
+	return a->l > 0 ? a->a[--a->l] : NULL;
+}

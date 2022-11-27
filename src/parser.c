@@ -21,12 +21,15 @@ void initParser(string code, Array *tokens) {
 	parser.tokens = tokens;
 	Program *program = initProgram(tokens->l/4);
 	parser.program = program;
-	Array *errors = malloc(sizeof(Array));
-	initArray(errors, 2);
+	Array *errors = newArray(2);
 	parser.errors = errors;
 	parser.iterator = -1;
 	parser.code = code;
-};
+	// call to avoid gcc warnings
+	current();
+	match(0);
+	peekPrev();
+}
 
 
 bool end() { return parser.iterator > parser.tokens->l-2; }
@@ -49,10 +52,11 @@ bool match(Type type) {
 	else return false;
 }
 
-extern Result *parse(string code, Array *tokens) {
+extern Result *parse(string code, Array *tokens, string fname) {
 	initParser(code, tokens);
 	Result *result = malloc(sizeof(Result));
+	pushArray(parser.errors, error("Parse", fname, "test error (145th token)", (Token *)parser.tokens->a[145]));
 	result->errors = parser.errors;
 	result->data = parser.program;
 	return result;
-};
+}

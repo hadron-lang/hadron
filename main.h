@@ -22,8 +22,4 @@ typedef struct Args {
 	string file;
 } Args;
 
-int main(int, string *);
-int check(Array *);
-bool isLang(string);
-bool isFile(string);
-Lang parseLang(string);
+extern int main(int, string *);

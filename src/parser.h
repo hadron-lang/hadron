@@ -4,6 +4,6 @@
 #include "./types.h"
 #include "./errors.h"
 
-extern Result *parse(string, Array *);
+extern Result *parse(string, Array *, string);
 
 #endif

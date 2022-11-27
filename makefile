@@ -1,5 +1,5 @@
 SRC=$(shell find src/ -name '*.c') main.c
-CARGS=-Wall -Wextra -g -lm
+CARGS=-Wall -Wextra -Wpedantic -g -lm
 COMPILE=gcc -o out/debug.bin $(SRC) $(CARGS)
 
 gcc:

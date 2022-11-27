@@ -1,7 +1,6 @@
 #ifndef __LANG_TYPES_H
 #define __LANG_TYPES_H 1
 
-#include <malloc.h>
 #include <stdarg.h>
 #include <string.h>
 #include "util/array.h"
@@ -67,6 +66,8 @@ typedef enum __attribute__((__packed__)) Types {
 	DELMT,    //* ;
 	SEP,      //* ,
 	AT,       //* @
+	HASH,     //* #
+	QUERY,    //* ?
 	UNDEF,
 	BRACKET,  //* []
 	PAREN,    //* ()
@@ -95,16 +96,12 @@ typedef enum __attribute__((__packed__)) Types {
 	REM     //* %
 } Type;
 
-typedef struct Point {
-	int line;
-	int character;
-} Point;
-
 typedef struct Position {
-	Point start;
-	Point end;
-	int absoluteStart;
-	int absoluteEnd;
+	int line;
+	int start;
+	int end;
+	int absStart;
+	int absEnd;
 } Position;
 
 typedef struct Token {
