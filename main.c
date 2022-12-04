@@ -62,7 +62,7 @@ int main(int argc, string *argv) {
 	free(contents);
 	freeArray(t->data);
 	free(t);
-	freeArray(p->data);
+	freeArray(((Program *)p->data)->body);
 	free(p);
 }
 

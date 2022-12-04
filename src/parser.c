@@ -19,10 +19,8 @@ struct Parser {
 
 void initParser(string code, Array *tokens) {
 	parser.tokens = tokens;
-	Program *program = initProgram(tokens->l/4);
-	parser.program = program;
-	Array *errors = newArray(2);
-	parser.errors = errors;
+	parser.program = initProgram(tokens->l/4);
+	parser.errors = newArray(2);
 	parser.iterator = -1;
 	parser.code = code;
 	// call to avoid gcc warnings
@@ -55,7 +53,8 @@ bool match(Type type) {
 extern Result *parse(string code, Array *tokens, string fname) {
 	initParser(code, tokens);
 	Result *result = malloc(sizeof(Result));
-	pushArray(parser.errors, error("Parse", fname, "test error (145th token)", (Token *)parser.tokens->a[145]));
+	// pushArray(parser.errors, error("Parse", fname, "test error (145th token)", (Token *)parser.tokens->a[145]));
+	trimArray(parser.errors);
 	result->errors = parser.errors;
 	result->data = parser.program;
 	return result;
