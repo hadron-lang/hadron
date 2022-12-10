@@ -1,11 +1,14 @@
 #include "tokenizer.h"
 
-static void initTokenizer(string);
+static void initTokenizer(string, string);
+static void runDistanceCheck(Array *);
+static void runStackCheck(void);
 static char next(void);
 static char peekNext(void);
 // static char peekPrev(void);
 static char current(void);
 static Token *addToken(Type);
+static Token *cloneToken(Token *);
 static bool match(char);
 static bool end(void);
 static bool start(void);
@@ -15,7 +18,7 @@ static bool isBin(char);
 static bool isOct(char);
 static bool isHex(char);
 
-struct Tokenizer {
+static struct Tokenizer {
 	Position token;
 	int line;
 	int iterator;
@@ -23,10 +26,12 @@ struct Tokenizer {
 	int length;
 	Array *tokens;
 	Array *errors;
+	Array *stack;
 	string code;
+	string file;
 } tokenizer;
 
-void initTokenizer(string code) {
+void initTokenizer(string code, string fname) {
 	if (tokenizer.tokens) freeArray(tokenizer.tokens);
 	if (tokenizer.errors) freeArray(tokenizer.errors);
 	tokenizer.code = code;
@@ -37,10 +42,20 @@ void initTokenizer(string code) {
 	tokenizer.character = 1;
 	tokenizer.tokens = newArray(tokenizer.length/8);
 	tokenizer.errors = newArray(2);
+	tokenizer.stack = newArray(4);
+	tokenizer.file = fname;
+}
+
+Token *cloneToken(Token *t) {
+	Token *n = malloc(sizeof(Token));
+	n->pos = t->pos;
+	n->type = t->type;
+	return n;
 }
 
 Result *tokenize(string code, string fname) {
-	initTokenizer(code);
+	initTokenizer(code, fname);
+	// syncStack();
 	char c;
 	while (!end()) {
 		c = next();
@@ -53,10 +68,10 @@ Result *tokenize(string code, string fname) {
 			case '#': addToken(HASH); continue;
 			case ';': addToken(DELMT); continue;
 			case ':': addToken(COLON); continue;
-			case '{': case '}': addToken(CBRACKET); continue;
-			case '[': case ']': addToken(BRACKET); continue;
-			case '(': case ')': addToken(PAREN); continue;
 			case '\0': addToken(_EOF); continue;
+			case '(': case ')': pushArray(tokenizer.stack, cloneToken(addToken(PAREN))); continue;
+			case '[': case ']': pushArray(tokenizer.stack, cloneToken(addToken(BRACKET))); continue;
+			case '{': case '}': pushArray(tokenizer.stack, cloneToken(addToken(CBRACKET))); continue;
 			case '\n': case ' ': case '\t': continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
@@ -153,15 +168,13 @@ Result *tokenize(string code, string fname) {
 				}; continue;
 			} default: {
 				if (current() == '0') {
-					char base = next();
-					if (base == 'o') {
+					if (match('o') || isOct(peekNext())) {
 						while (isOct(peekNext())) { next(); }
-					} else if (base == 'b') {
+					} else if (match('b')) {
 						while (isBin(peekNext())) { next(); }
-					} else if (base == 'x') {
+					} else if (match('x')) {
 						while (isHex(peekNext())) { next(); }
-					}
-					continue;
+					} else { addToken(DEC); } continue;
 				}
 				if (isDec(current())) {
 					while (isDec(peekNext())) next();
@@ -171,28 +184,26 @@ Result *tokenize(string code, string fname) {
 				if (isAlpha(current())) {
 					while (isAlpha(peekNext()) || isDec(peekNext())) next();
 					int len = tokenizer.iterator+1 - tokenizer.token.absStart;
-					string substr = malloc(len+1);
-					memcpy(substr, &code[tokenizer.token.absStart], len);
-					substr[len] = '\0';
-					if      (!strcmp(substr, "for"   )) addToken(FOR);
-					else if (!strcmp(substr, "class" )) addToken(CLASS);
-					else if (!strcmp(substr, "func"  )) addToken(FUNC);
-					else if (!strcmp(substr, "true"  )) addToken(TRUE);
-					else if (!strcmp(substr, "false" )) addToken(FALSE);
-					else if (!strcmp(substr, "null"  )) addToken(_NULL);
-					else if (!strcmp(substr, "while" )) addToken(WHILE);
-					else if (!strcmp(substr, "if"    )) addToken(IF);
-					else if (!strcmp(substr, "do"    )) addToken(DO);
-					else if (!strcmp(substr, "else"  )) addToken(ELSE);
-					else if (!strcmp(substr, "from"  )) addToken(FROM);
-					else if (!strcmp(substr, "import")) addToken(IMPORT);
-					else if (!strcmp(substr, "new"   )) addToken(NEW);
-					else if (!strcmp(substr, "await" )) addToken(AWAIT);
-					else if (!strcmp(substr, "as"    )) addToken(AS);
-					else if (!strcmp(substr, "async" )) addToken(ASYNC);
-					else if (!strcmp(substr, "ret"   )) addToken(RET);
+					string sub = substr(code, tokenizer.token.absStart, len);
+					if      (!strcmp(sub, "for"   )) addToken(FOR);
+					else if (!strcmp(sub, "class" )) addToken(CLASS);
+					else if (!strcmp(sub, "func"  )) addToken(FUNC);
+					else if (!strcmp(sub, "true"  )) addToken(TRUE);
+					else if (!strcmp(sub, "false" )) addToken(FALSE);
+					else if (!strcmp(sub, "null"  )) addToken(_NULL);
+					else if (!strcmp(sub, "while" )) addToken(WHILE);
+					else if (!strcmp(sub, "if"    )) addToken(IF);
+					else if (!strcmp(sub, "do"    )) addToken(DO);
+					else if (!strcmp(sub, "else"  )) addToken(ELSE);
+					else if (!strcmp(sub, "from"  )) addToken(FROM);
+					else if (!strcmp(sub, "import")) addToken(IMPORT);
+					else if (!strcmp(sub, "new"   )) addToken(NEW);
+					else if (!strcmp(sub, "await" )) addToken(AWAIT);
+					else if (!strcmp(sub, "as"    )) addToken(AS);
+					else if (!strcmp(sub, "async" )) addToken(ASYNC);
+					else if (!strcmp(sub, "ret"   )) addToken(RET);
 					else addToken(NAME);
-					free(substr); continue;
+					free(sub); continue;
 				};
 				if      ((current() & 0x80) == 0x00);                            // 1xxxxxxx == 0xxxxxxx
 				else if ((current() & 0xe0) == 0xc0) { next(); }                 // 111xxxxx == 110xxxxx
@@ -204,11 +215,57 @@ Result *tokenize(string code, string fname) {
 			};
 		}
 	}
+	runStackCheck();
 	Result *result = malloc(sizeof(Result));
 	trimArray(tokenizer.tokens);
 	result->errors = tokenizer.errors;
 	result->data = tokenizer.tokens;
 	return result;
+}
+
+void runDistanceCheck(Array *r) {
+	for (int dist = 1; dist < r->l/2; dist++) {
+		for (int i = 0; i+dist < r->l-1; i++) {
+			Token *a = getArray(r, i);
+			Token *b = getArray(r, i+dist+1);
+			char m = a == NULL ? 0 : tokenizer.code[a->pos.absStart];
+			char n = b == NULL ? 0 : tokenizer.code[b->pos.absStart];
+			if (
+				(m == '(' && n == ')') ||
+				(m == '[' && n == ']') ||
+				(m == '{' && n == '}')
+			) { removeArray(r, i); removeArray(r, i+dist+1); }
+		};
+	};
+	Array *temp = clearArray(r);
+	for (int i = 0; i < temp->l; i++) {
+		Token *t = temp->a[i];
+		pushArray(tokenizer.errors, error(
+			"Syntax", tokenizer.file, "unmatched token", cloneToken(t)
+		));
+	};
+	freeArray(r);
+	free(temp->a);
+	free(temp);
+}
+
+void runStackCheck() {
+	Array *s = tokenizer.stack;
+	Array *r = newArray(s->l/2);
+	for (int i = 0; i < s->l; i++) {
+		Token *t = s->a[i];
+		Token *p = lastArray(r);
+		char c = tokenizer.code[t->pos.absStart];
+		char x = p == NULL ? 0 : tokenizer.code[p->pos.absStart];
+		     if (c == '(') pushArray(r, cloneToken(t));
+		else if (c == '[') pushArray(r, cloneToken(t));
+		else if (c == '{') pushArray(r, cloneToken(t));
+		else if (x == '(' && c == ')') popArray(r);
+		else if (x == '[' && c == ']') popArray(r);
+		else if (x == '{' && c == '}') popArray(r);
+		else pushArray(r, cloneToken(t));
+	}; freeArray(s);
+	runDistanceCheck(r);
 }
 
 Token *addToken(Type type) {

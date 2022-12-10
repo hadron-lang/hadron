@@ -7,6 +7,7 @@
 #include "src/types.h"
 #include "src/errors.h"
 #include "src/util/print.h"
+#include "src/util/str.h"
 
 typedef enum __attribute__((__packed__)) Langs {
 	L_UNKN,
@@ -14,12 +15,5 @@ typedef enum __attribute__((__packed__)) Langs {
 	L_C,
 	L_ASM
 } Lang;
-
-typedef struct Args {
-	Lang lang;
-	small mode;
-	bool set;
-	string file;
-} Args;
 
 extern int main(int, string *);

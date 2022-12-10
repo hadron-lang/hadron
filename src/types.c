@@ -1,5 +1,14 @@
 #include "types.h"
 
+string getTokenContent(string src, Token *t) {
+	bool str = t->type == STR;
+	int l = t->pos.absEnd - t->pos.absStart - (str ? 2 : 0);
+	string sub = (string)malloc(l+1);
+	memcpy(sub, src+t->pos.absStart + (str ? 1 : 0), l);
+	sub[l] = 0;
+	return sub;
+}
+
 Program *initProgram(int s) {
 	Program *prg = malloc(sizeof(Program));
 	prg->type = PROGRAM;
@@ -14,26 +23,6 @@ void freeProgram(Program *program) {
 			case IMPORT_SPECIFIER: { break; }
 		}
 	}
-}
-
-string getType(Type type, ...) {
-	va_list v;
-	va_start(v, type);
-	string s = va_arg(v, string);
-	string r = malloc(strlen(s) + 16);
-	strcpy(r, s);
-	string s0;
-	switch (type) {
-		case STR: s0 = "String"; break;
-		case NAME: s0 = "Name"; break;
-		case DEC: case HEX: case OCTAL: case BIN: s0 = "Number"; break;
-		case BRACKET: s0 = "Bracket"; break;
-		case PAREN: s0 = "Parenthesis"; break;
-		case CBRACKET: s0 = "CurlyBracket"; break;
-		default: s0 = "Undefined"; break;
-	}
-	strcat(r, s0);
-	return r;
 }
 
 ImportSpecifier *initImportSpecifier(string name, string local) {

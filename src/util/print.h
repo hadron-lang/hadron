@@ -8,8 +8,10 @@
 #include "array.h"
 #include "../errors.h"
 #include "../tokenizer.h"
+#include "str.h"
 
 extern void printTokens(string file_contents, Array *tokens);
+extern void printToken(Token *t);
 extern void printAST(Program *program, small depth);
 extern void printErrors(Array *);
 

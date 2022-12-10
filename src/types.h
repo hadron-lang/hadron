@@ -13,6 +13,8 @@ typedef char *string;
 #define false (bool)0
 
 typedef enum __attribute__((__packed__)) Types {
+	UNDEF,
+
 	// COMPARE
 	CMP_EQ,  //* ==
 	CMP_GT,  //* >
@@ -22,22 +24,22 @@ typedef enum __attribute__((__packed__)) Types {
 	CMP_GEQ, //* >=
 
 	// ASSIGN
-	EQ,        // * =
-	ADD_EQ,    // * +=
-	SUB_EQ,    // * -=
-	MUL_EQ,    // * *=
-	DIV_EQ,    // * /=
-	INCR,      // * ++
-	DECR,      // * --
-	LAND_EQ,   // * &&=
-	LOR_EQ,    // * ||=
-	BAND_EQ,   // * &=
-	BOR_EQ,    // * |=
-	BXOR_EQ,   // * ^=
-	BNOT_EQ,   // * ~=
-	REM_EQ,    // * %=
-	RSHIFT_EQ, // * >>=
-	LSHIFT_EQ, // * <<=
+	EQ,        //* =
+	ADD_EQ,    //* +=
+	SUB_EQ,    //* -=
+	MUL_EQ,    //* *=
+	DIV_EQ,    //* /=
+	INCR,      //* ++
+	DECR,      //* --
+	LAND_EQ,   //* &&=
+	LOR_EQ,    //* ||=
+	BAND_EQ,   //* &=
+	BOR_EQ,    //* |=
+	BXOR_EQ,   //* ^=
+	BNOT_EQ,   //! ~= to be removed
+	REM_EQ,    //* %=
+	RSHIFT_EQ, //* >>=
+	LSHIFT_EQ, //* <<=
 
 	// KEYWORD
 	FOR,
@@ -68,7 +70,6 @@ typedef enum __attribute__((__packed__)) Types {
 	AT,       //* @
 	HASH,     //* #
 	QUERY,    //* ?
-	UNDEF,
 	BRACKET,  //* []
 	PAREN,    //* ()
 	CBRACKET, //* {}
@@ -141,8 +142,8 @@ typedef struct Result {
 	void *data;
 } Result;
 
+extern string getTokenContent(string code, Token*);
 extern void freeProgram(Program *);
-extern string getType(Type, ...);
 extern Program *initProgram(int);
 extern ImportSpecifier *initImportSpecifier(string name, string local_name);
 extern ImportDeclaration *initImportDeclaration(string, Array *import_specifier_array);

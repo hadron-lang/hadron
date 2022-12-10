@@ -1,51 +1,76 @@
 #include "main.h"
 
-static int check(Array *, bool);
+static bool check(Array *, bool);
 static bool isLang(string);
 static bool isFile(string);
 static Lang parseLang(string);
+static void init(int, string *, Array *);
 
-int main(int argc, string *argv) {
-	Args args = { 0, 0, false, NULL };
-	Array *errors = newArray(1);
+static struct Args {
+	Lang lang;
+	small mode;
+	bool set;
+	bool shortlog;
+	string file;
+} args;
+
+void init(int argc, string *argv, Array *errs) {
+	args.lang = L_UNKN;
+	args.mode = 0;
+	args.set = false;
+	args.shortlog = false;
+	args.file = NULL;
 	for (small i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
 			if (args.set && !args.mode)
-				pushArray(errors, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
+				pushArray(errs, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 1;
 			args.set = true;
 		} else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interpret") == 0) {
-			if (args.lang) pushArray(errors, clierror(1, "language is not configurable in interpreter"));
+			if (args.lang) pushArray(errs, clierror(1, "language is not configurable in interpreter"));
 			if (args.set && args.mode)
-				pushArray(errors, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
+				pushArray(errs, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 0;
 			args.set = true;
+		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--short") == 0) {
+			args.shortlog = true;
 		} else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--lang") == 0) {
 			if (isLang(argv[i+1])) args.lang = parseLang(argv[++i]);
 		} else if (isFile(argv[i])) args.file = argv[i];
-	}
-	if (!args.mode && args.lang) pushArray(errors, clierror(1, "language is not available in interpreter"));
-	if (/*args.mode &&*/ !args.file) pushArray(errors, clierror(1, "you should provide at least one file to compile"));
-	if (args.mode && !args.lang) pushArray(errors, clierror(1, "you should choose one language to compile to"));
+	};
+	if (!args.mode && args.lang) pushArray(errs, clierror(1, "language is not available in interpreter"));
+	if (/*args.mode &&*/ !args.file) pushArray(errs, clierror(1, "you should provide at least one file to compile"));
+	if (args.mode && !args.lang) pushArray(errs, clierror(1, "you should choose one language to compile to"));
+}
+
+int main(int argc, string *argv) {
+	Array *errors = newArray(1);
+	init(argc, argv, errors);
+
 	if (check(errors, false)) return -1;
+
 	FILE *fp = fopen(args.file, "rb");
 	if (fp == NULL) {
-		string e0 = "file \x1b[97m";
-		string e = malloc(strlen(e0) + strlen(args.file) + 1);
-		strcpy(e, e0);
-		strcat(e, args.file);
+		string e = utfcat("file \x1b[97m", args.file);
 		pushArray(errors, clierror(2, e, " does not exist"));
 		free(e);
 	}
-	if (check(errors, true)) return -1;
+	if (check(errors, false)) return -1;
 
 	fseek(fp, 0, SEEK_END);
-	long fsize = ftell(fp);
+	size_t fsize = ftell(fp);
 	rewind(fp);
 
-	string contents = malloc(fsize);
-	fread(contents, fsize, true, fp);
-	contents[fsize-1] = 0;
+	string contents = malloc(fsize+1);
+
+	if (contents == NULL) pushArray(errors, clierror(1, "could not allocate enough space for file"));
+	if (check(errors, false)) return -1;
+
+	size_t read = fread(contents, 1UL, fsize, fp);
+	if (read < fsize) pushArray(errors, clierror(1, "could not read file entirely"));
+	if (check(errors, true)) return -1;
+
+	contents[fsize] = 0;
 
 	fclose(fp);
 
@@ -57,7 +82,7 @@ int main(int argc, string *argv) {
 	Result *p = parse(contents, t->data, args.file);
 	if (check(p->errors, true)) return -1;
 
-	printAST(p->data, 2);
+	printAST(p->data, 5);
 
 	free(contents);
 	freeArray(t->data);
@@ -66,7 +91,7 @@ int main(int argc, string *argv) {
 	free(p);
 }
 
-int check(Array *errors, bool drop) {
+bool check(Array *errors, bool drop) {
 	if (errors->l) {
 		printErrors(errors);
 		if (drop) freeArray(errors);
