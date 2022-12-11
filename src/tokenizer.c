@@ -224,7 +224,7 @@ Result *tokenize(string code, string fname) {
 }
 
 void runDistanceCheck(Array *r) {
-	for (int dist = 1; dist < r->l/2; dist++) {
+	for (int dist = 1; dist < r->l-1; dist++) {
 		for (int i = 0; i+dist < r->l-1; i++) {
 			Token *a = getArray(r, i);
 			Token *b = getArray(r, i+dist+1);
