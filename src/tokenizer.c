@@ -66,6 +66,7 @@ Result *tokenize(string code, string fname) {
 			case '.': addToken(DOT); continue;
 			case ',': addToken(SEP); continue;
 			case '#': addToken(HASH); continue;
+			case '~': addToken(BNOT); continue;
 			case ';': addToken(DELMT); continue;
 			case ':': addToken(COLON); continue;
 			case '\0': addToken(_EOF); continue;
@@ -73,78 +74,74 @@ Result *tokenize(string code, string fname) {
 			case '[': case ']': pushArray(tokenizer.stack, cloneToken(addToken(BRACKET))); continue;
 			case '{': case '}': pushArray(tokenizer.stack, cloneToken(addToken(CBRACKET))); continue;
 			case '\n': case ' ': case '\t': continue;
-			case '+': {
+			case '+':
 				if (match('=')) addToken(ADD_EQ);
 				else if (match('+')) addToken(INCR);
 				else addToken(ADD);
 				continue;
-			} case '-': {
+			case '-':
 				if (match('=')) addToken(SUB_EQ);
 				else if (match('-')) addToken(DECR);
 				else addToken(SUB);
 				continue;
-			} case '*': {
+			case '*':
 				if (match('=')) addToken(MUL_EQ);
 				else if (match('=')) addToken(POW);
 				else addToken(MUL);
 				continue;
-			} case '!': {
+			case '!':
 				if (match('=')) addToken(CMP_NEQ);
 				else addToken(LNOT);
 				continue;
-			} case '?': {
+			case '?':
 				addToken(QUERY);
 				continue;
-			} case '|': {
+			case '|':
 				if (match('|')) {
 					if (match('=')) addToken(LOR_EQ);
 					else addToken(LOR);
 				} else if (match('=')) addToken(BOR_EQ);
 				else addToken(BOR);
 				continue;
-			} case '&': {
+			case '&':
 				if (match('&')) {
 					if (match('=')) addToken(LAND_EQ);
 					else addToken(LAND);
 				} else if (match('=')) addToken(BAND_EQ);
 				else addToken(BAND);
 				continue;
-			} case '~': {
-				if (match('=')) addToken(BNOT_EQ);
-				else addToken(BNOT);
-				continue;
-			} case '^': {
+			case '^':
 				if (match('=')) addToken(BXOR_EQ);
 				else addToken(BXOR);
 				continue;
-			} case '/': {
+			case '/':
 				if (match('/')) while (peekNext() != '\n' && !end()) next();
 				else if (match('*')) { while (!(next() == '*' && next() == '/') && !end()); }
 				else addToken(DIV);
 				continue;
-			} case '=': {
+			case '=':
 				if (match('=')) addToken(CMP_EQ);
 				else addToken(EQ);
 				continue;
-			} case '>': {
+			case '>':
 				if (match('>')) {
 					if (match('=')) addToken(RSHIFT_EQ);
 					else addToken(RSHIFT);
 				} else if (match('=')) addToken(CMP_GEQ);
 				else addToken(CMP_GT);
 				continue;
-			} case '<': {
+			case '<':
 				if (match('>')) {
 					if (match('=')) addToken(LSHIFT_EQ);
 					else addToken(LSHIFT);
 				} else if (match('=')) addToken(CMP_LEQ);
 				else addToken(CMP_LT);
 				continue;
-			} case '%': {
+			case '%':
 				if (match('=')) addToken(REM_EQ);
 				else addToken(REM);
 				continue;
-			} case '"': {
+			case '"':
 				bool err = false;
 				while (peekNext() != '"') {
 					if (peekNext() == '\n') { err = true; break; }
@@ -155,7 +152,7 @@ Result *tokenize(string code, string fname) {
 				)); else {
 					next(); addToken(STR);
 				}; continue;
-			} case '\'': {
+			case '\'':
 				bool err = false;
 				while (peekNext() != '\'') {
 					if (peekNext() == '\n') { err = true; break; }
@@ -166,7 +163,7 @@ Result *tokenize(string code, string fname) {
 				)); else {
 					next(); addToken(STR);
 				}; continue;
-			} default: {
+			default:
 				if (current() == '0') {
 					if (match('o') || isOct(peekNext())) {
 						while (isOct(peekNext())) { next(); }
@@ -212,7 +209,6 @@ Result *tokenize(string code, string fname) {
 				Token* t = addToken(UNDEF);
 				pushArray(tokenizer.errors, error("Syntax", fname, "unexpected token", t));
 				continue;
-			};
 		}
 	}
 	runStackCheck();
