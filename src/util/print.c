@@ -105,6 +105,24 @@ void util_typelog(Typed *v, small indent) {
 		case IMPORT_SPECIFIER:
 			printf("\x1b[95m[ImportSpecifier]\x1b[0m { \x1b[94m...\x1b[0m ");
 			break;
+		case ASSIGNMENT_EXPRESSION:
+			printf("\x1b[95m[AssignmentExpression]\x1b[0m {\x1b[94m...\x1b[0m ");
+		default: break;
+	}
+}
+
+void util_linelog(Typed *v) {
+	switch (v->type) {
+		case LITERAL:
+			printf(
+				"\x1b[95m[Literal]\x1b[0m \x1b[92m\"%s\"\x1b[0m\n",
+				((Literal *)v)->value
+			); break;
+		case IDENTIFIER:
+			printf(
+				"\x1b[95m[Identifier]\x1b[0m \x1b[92m\"%s\"\x1b[0m\n",
+				((Identifier *)v)->name
+			); break;
 		default: break;
 	}
 }
@@ -112,8 +130,17 @@ void util_typelog(Typed *v, small indent) {
 void util_log(Typed *v, small indent, small depth) {
 	if (indent == depth) { util_typelog(v, indent); return; }
 	for (small i = 0; i < indent; i++) printf("  ");
+	// if (!v) printf("\x1b[93m(null)\x1b[0m\n");
 	switch (v->type) {
-		case PROGRAM: {
+		case LITERAL: {
+			Literal *ltr = (Literal *)v;
+			printf("\x1b[95m[Literal]\x1b[0m \x1b[92m\"%s\"\x1b[0m", ltr->value);
+			break;
+		} case IDENTIFIER: {
+			Identifier *id = (Identifier *)v;
+			printf("\x1b[95m[Identifier\x1b[0m \x1b[92m\"%s\"\x1b[0m", id->name);
+			break;
+		} case PROGRAM: {
 			printf("\x1b[95m[Program]\x1b[0m {\n");
 			for (small i = 0; i < indent; i++) printf("  ");
 			for (int i = 0; i < ((Program *)v)->body->l; i++) {
@@ -126,7 +153,8 @@ void util_log(Typed *v, small indent, small depth) {
 			printf("\x1b[95m[ImportDeclaration]\x1b[0m {\n");
 			ImportDeclaration *decl = (ImportDeclaration *)v;
 			for (small i = 0; i < indent+1; i++) printf("  ");
-			printf("\x1b[96msource\x1b[0m: \x1b[92m\"%s\"\x1b[0m\n", decl->source);
+			printf("\x1b[96msource\x1b[0m: ");
+			util_linelog((Typed *)decl->source);
 			for (int i = 0; i < decl->specifiers->l; i++) {
 				util_log(decl->specifiers->a[i], indent+1, depth);
 				printf("}\n");
@@ -137,11 +165,21 @@ void util_log(Typed *v, small indent, small depth) {
 			printf("\x1b[95m[ImportSpecifier]\x1b[0m {\n");
 			ImportSpecifier *spec = (ImportSpecifier *)v;
 			for (small i = 0; i < indent+1; i++) printf("  ");
-			printf("\x1b[96mname\x1b[0m: \x1b[92m\"%s\"\x1b[0m\n", spec->name);
+			printf("\x1b[96mname\x1b[0m: ");
+			util_linelog((Typed *)spec->name);
 			for (small i = 0; i < indent+1; i++) printf("  ");
-			printf("\x1b[96mlocal\x1b[0m: \x1b[92m\"%s\"\x1b[0m\n", spec->local);
+			printf("\x1b[96mlocal\x1b[0m: ");
+			util_linelog((Typed *)spec->local);
 			for (small i = 0; i < indent; i++) printf("  ");
-		}
+			break;
+		} case ASSIGNMENT_EXPRESSION: {
+			printf("\x1b[95m[AssignmentExpression]\x1b[0m {\n");
+			AssignmentExpression *expr = (AssignmentExpression *)v;
+			util_log((Typed *)expr->left, indent+1, depth);
+			util_log((Typed *)expr->right, indent+1, depth);
+			for (small i = 0; i < indent; i++) printf("  ");
+			break;
+		}  default: printf("\x1b[93m[Unknown %i]\x1b[0m\n", v->type);
 	}
 }
 
