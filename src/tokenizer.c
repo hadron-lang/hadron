@@ -73,7 +73,8 @@ Result *tokenize(string code, string fname) {
 			case '(': case ')': pushArray(tokenizer.stack, cloneToken(addToken(PAREN))); continue;
 			case '[': case ']': pushArray(tokenizer.stack, cloneToken(addToken(BRACKET))); continue;
 			case '{': case '}': pushArray(tokenizer.stack, cloneToken(addToken(CBRACKET))); continue;
-			case '\n': case ' ': case '\t': continue;
+			case '\n': addToken(NEWLINE); continue;
+			case ' ': case '\t': continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
 				else if (match('+')) addToken(INCR);

@@ -12,6 +12,11 @@ typedef char *string;
 #define true (bool)1
 #define false (bool)0
 
+typedef struct Value {
+	bool error;
+	void *value;
+} Value;
+
 typedef enum __attribute__((__packed__)) Types {
 	UNDEF,
 
@@ -36,7 +41,6 @@ typedef enum __attribute__((__packed__)) Types {
 	BAND_EQ,   //* &=
 	BOR_EQ,    //* |=
 	BXOR_EQ,   //* ^=
-	BNOT_EQ,   //! ~= to be removed
 	REM_EQ,    //* %=
 	RSHIFT_EQ, //* >>=
 	LSHIFT_EQ, //* <<=
@@ -66,6 +70,7 @@ typedef enum __attribute__((__packed__)) Types {
 	DEC,      //* 123
 	DOT,      //* .
 	DELMT,    //* ;
+	NEWLINE,  //* \n
 	SEP,      //* ,
 	AT,       //* @
 	HASH,     //* #
@@ -111,14 +116,33 @@ typedef struct Token {
 } Token;
 
 typedef enum __attribute__((__packed__)) AST_Types {
-	PROGRAM = 1,
+	PROGRAM,
 	IMPORT_DECLARATION,
-	IMPORT_SPECIFIER
+	IMPORT_SPECIFIER,
+	ASSIGNMENT_EXPRESSION,
+	LITERAL,
+	STRING_LITERAL,
+	IDENTIFIER
 } AST_Type;
 
 typedef struct Typed {
 	AST_Type type;
 } Typed;
+
+typedef struct Identifier { // extends Typed
+	AST_Type type;
+	string name;
+} Identifier;
+
+typedef struct Literal { // extends Typed
+	AST_Type type;
+	string value;
+} Literal;
+
+typedef struct StringLiteral { // extends Typed
+	AST_Type type;
+	string value;
+} StringLiteral;
 
 typedef struct Program { // extends Typed
 	AST_Type type;
@@ -127,15 +151,21 @@ typedef struct Program { // extends Typed
 
 typedef struct ImportSpecifier { // extends Typed
 	AST_Type type;
-	string name;
-	string local;
+	Identifier *name;
+	Identifier *local;
 } ImportSpecifier;
 
 typedef struct ImportDeclaration { // extends Typed
 	AST_Type type;
-	string source;
+	StringLiteral *source;
 	Array *specifiers;
 } ImportDeclaration;
+
+typedef struct AssignmentExpression { // extends Typed
+	AST_Type type;
+	Typed *left;
+	Typed *right;
+} AssignmentExpression;
 
 typedef struct Result {
 	Array *errors;
@@ -145,7 +175,11 @@ typedef struct Result {
 extern string getTokenContent(string code, Token*);
 extern void freeProgram(Program *);
 extern Program *initProgram(int);
-extern ImportSpecifier *initImportSpecifier(string name, string local_name);
-extern ImportDeclaration *initImportDeclaration(string, Array *import_specifier_array);
+extern ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local_name);
+extern ImportDeclaration *initImportDeclaration(StringLiteral *, Array *import_specifier_array);
+extern AssignmentExpression *initAssignmentExpression(Typed *left, Typed *right);
+extern Literal *initLiteral(string value);
+extern StringLiteral *initStringLiteral(string value);
+extern Identifier *initIdentifier(string name);
 
 #endif

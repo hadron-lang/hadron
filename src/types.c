@@ -9,33 +9,64 @@ string getTokenContent(string src, Token *t) {
 	return sub;
 }
 
+void freeProgram(Program *program) {
+	for (int i = 0; i < program->body->l; i++) {
+		Typed *t = program->body->a[i];
+		switch (t->type) {
+			case PROGRAM: break;
+			case IMPORT_DECLARATION: break;
+			case IMPORT_SPECIFIER: break;
+			case LITERAL:
+				free(((Literal *)t)->value);
+				free(t);
+				break;
+			default: break;
+		}
+	}
+}
+
 Program *initProgram(int s) {
 	Program *prg = malloc(sizeof(Program));
 	prg->type = PROGRAM;
 	prg->body = newArray(s);
 	return prg;
 }
-void freeProgram(Program *program) {
-	for (int i = 0; i < program->body->l; i++) {
-		switch (((Typed *)program->body->a[i])->type) {
-			case PROGRAM: { break; }
-			case IMPORT_DECLARATION: { break; }
-			case IMPORT_SPECIFIER: { break; }
-		}
-	}
-}
-
-ImportSpecifier *initImportSpecifier(string name, string local) {
+ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local) {
 	ImportSpecifier *spec = malloc(sizeof(ImportSpecifier));
 	spec->type = IMPORT_SPECIFIER;
 	spec->name = name;
 	spec->local = local;
 	return spec;
 }
-ImportDeclaration *initImportDeclaration(string src, Array *speca) {
+ImportDeclaration *initImportDeclaration(StringLiteral *src, Array *speca) {
 	ImportDeclaration *decl = malloc(sizeof(ImportSpecifier));
 	decl->type = IMPORT_DECLARATION;
 	decl->source = src;
 	decl->specifiers = speca;
 	return decl;
+}
+AssignmentExpression *initAssignmentExpression(Typed *l, Typed *r) {
+	AssignmentExpression *asgn = malloc(sizeof(AssignmentExpression));
+	asgn->type = ASSIGNMENT_EXPRESSION;
+	asgn->left = l;
+	asgn->right = r;
+	return asgn;
+}
+Literal *initLiteral(string v) {
+	Literal *ltr = malloc(sizeof(Literal));
+	ltr->type = LITERAL;
+	ltr->value = v;
+	return ltr;
+}
+StringLiteral *initStringLiteral(string v) {
+	StringLiteral *ltr = malloc(sizeof(StringLiteral));
+	ltr->type = STRING_LITERAL;
+	ltr->value = v;
+	return ltr;
+}
+Identifier *initIdentifier(string n) {
+	Identifier *id = malloc(sizeof(Identifier));
+	id->type = IDENTIFIER;
+	id->name = n;
+	return id;
 }

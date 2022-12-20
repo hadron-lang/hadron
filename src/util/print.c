@@ -1,9 +1,10 @@
 #include "print.h"
 #include <math.h>
 
-static void util_typelog(Typed *, small);
+static void util_typelog(Typed *);
 static void util_log(Typed *, small, small);
 static void repeat(string, int);
+static void tab(small);
 
 void repeat(string c, int count) {
 	for (int i = 0; i < count; i++) printf("%s", c);
@@ -93,93 +94,111 @@ void printTokens(string code, Array *tokens) {
 	}
 }
 
-void util_typelog(Typed *v, small indent) {
-	for (small i = 0; i < indent; i++) printf("  ");
+void util_typelog(Typed *v) {
 	switch (v->type) {
 		case PROGRAM:
 			printf("\x1b[95m[Program]\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case IMPORT_DECLARATION:
-			printf("\x1b[95m[ImportDeclaration]\x1b[0m { \x1b[94m...\x1b[0m ");
+			printf("\x1b[95m[ImportDeclaration]\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case IMPORT_SPECIFIER:
-			printf("\x1b[95m[ImportSpecifier]\x1b[0m { \x1b[94m...\x1b[0m ");
+			printf("\x1b[95m[ImportSpecifier]\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case ASSIGNMENT_EXPRESSION:
-			printf("\x1b[95m[AssignmentExpression]\x1b[0m {\x1b[94m...\x1b[0m ");
+			printf("\x1b[95m[AssignmentExpression]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			break;
+		case LITERAL:
+			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value);
+			break;
 		default: break;
 	}
 }
 
 void util_linelog(Typed *v) {
 	switch (v->type) {
-		case LITERAL:
-			printf(
-				"\x1b[95m[Literal]\x1b[0m \x1b[92m\"%s\"\x1b[0m\n",
-				((Literal *)v)->value
-			); break;
-		case IDENTIFIER:
-			printf(
-				"\x1b[95m[Identifier]\x1b[0m \x1b[92m\"%s\"\x1b[0m\n",
-				((Identifier *)v)->name
-			); break;
-		default: break;
+		case STRING_LITERAL: {
+			printf("\x1b[92m\"%s\"\x1b[0m\n", ((StringLiteral *)v)->value); break;
+		} case LITERAL: {
+			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value); break;
+		} case IDENTIFIER: {
+			printf("\x1b[94m%s\x1b[0m\n", ((Identifier *)v)->name); break;
+		} default: printf("\x1b[93mnull\x1b[0m\n"); break;
+	}
+}
+
+void tab(small indent) {
+	for (small i = 0; i < indent; i++) {
+		// printf("%s  ", i%2 ? "" : "");
+		printf("  ");
 	}
 }
 
 void util_log(Typed *v, small indent, small depth) {
-	if (indent == depth) { util_typelog(v, indent); return; }
-	for (small i = 0; i < indent; i++) printf("  ");
+	if (indent == depth) {
+		tab(indent);
+		util_typelog(v);
+		return;
+	}
 	// if (!v) printf("\x1b[93m(null)\x1b[0m\n");
 	switch (v->type) {
-		case LITERAL: {
+		case STRING_LITERAL: {
+			StringLiteral *ltr = (StringLiteral *)v;
+			printf("\x1b[92m\"%s\"\x1b[0m\n", ltr->value);
+			break;
+		} case LITERAL: {
 			Literal *ltr = (Literal *)v;
-			printf("\x1b[95m[Literal]\x1b[0m \x1b[92m\"%s\"\x1b[0m", ltr->value);
+			printf("\x1b[93m%s\x1b[0m\n", ltr->value);
 			break;
 		} case IDENTIFIER: {
 			Identifier *id = (Identifier *)v;
-			printf("\x1b[95m[Identifier\x1b[0m \x1b[92m\"%s\"\x1b[0m", id->name);
+			printf("\x1b[94m%s\x1b[0m\n", id->name);
 			break;
 		} case PROGRAM: {
-			printf("\x1b[95m[Program]\x1b[0m {\n");
-			for (small i = 0; i < indent; i++) printf("  ");
+			printf("\x1b[95mProgram\x1b[0m {\n");
+			tab(indent);
 			for (int i = 0; i < ((Program *)v)->body->l; i++) {
+				tab(indent+1);
 				util_log(((Program *)v)->body->a[i], indent+1, depth);
-				printf("}\n");
-			}
+			};
 			printf("}\n");
 			break;
 		} case IMPORT_DECLARATION: {
-			printf("\x1b[95m[ImportDeclaration]\x1b[0m {\n");
+			printf("\x1b[95mImportDeclaration\x1b[0m {\n");
 			ImportDeclaration *decl = (ImportDeclaration *)v;
-			for (small i = 0; i < indent+1; i++) printf("  ");
-			printf("\x1b[96msource\x1b[0m: ");
+			tab(indent+1); printf("\x1b[96msource\x1b[0m: ");
 			util_linelog((Typed *)decl->source);
 			for (int i = 0; i < decl->specifiers->l; i++) {
 				util_log(decl->specifiers->a[i], indent+1, depth);
-				printf("}\n");
-			}
-			for (small i = 0; i < indent; i++) printf("  ");
+			};
+			tab(indent); printf("}\n");
 			break;
 		} case IMPORT_SPECIFIER: {
-			printf("\x1b[95m[ImportSpecifier]\x1b[0m {\n");
+			tab(indent);
+			printf("\x1b[95mImportSpecifier\x1b[0m {\n");
 			ImportSpecifier *spec = (ImportSpecifier *)v;
-			for (small i = 0; i < indent+1; i++) printf("  ");
+			tab(indent+1);
 			printf("\x1b[96mname\x1b[0m: ");
 			util_linelog((Typed *)spec->name);
-			for (small i = 0; i < indent+1; i++) printf("  ");
+			tab(indent+1);
 			printf("\x1b[96mlocal\x1b[0m: ");
 			util_linelog((Typed *)spec->local);
-			for (small i = 0; i < indent; i++) printf("  ");
+			tab(indent);
+			printf("}\n");
 			break;
 		} case ASSIGNMENT_EXPRESSION: {
-			printf("\x1b[95m[AssignmentExpression]\x1b[0m {\n");
+			printf("\x1b[95mAssignmentExpression\x1b[0m {\n");
 			AssignmentExpression *expr = (AssignmentExpression *)v;
-			util_log((Typed *)expr->left, indent+1, depth);
+			tab(indent+1);
+			printf("\x1b[96mleft\x1b[0m: ");
+			util_linelog((Typed *)expr->left);
+			tab(indent+1);
+			printf("\x1b[96mright\x1b[0m: ");
 			util_log((Typed *)expr->right, indent+1, depth);
-			for (small i = 0; i < indent; i++) printf("  ");
+			tab(indent);
+			printf("}\n");
 			break;
-		}  default: printf("\x1b[93m[Unknown %i]\x1b[0m\n", v->type);
+		}  default: printf("\x1b[93mUnknown %i\x1b[0m\n", v->type);
 	}
 }
 
@@ -188,21 +207,9 @@ void printAST(Program *p, small depth) {
 	printf("\n");
 }
 
-// int utflen(string s) {
-// 	size_t l = 0; for (size_t i = 0; i < strlen(s); i++, l++) {
-// 		if      ((s[i] & 0x80) == 0x00);
-// 		else if ((s[i] & 0xc0) == 0x80);
-// 		else if ((s[i] & 0xe0) == 0xc0) l -= 1;
-// 		else if ((s[i] & 0xf0) == 0xe0) l -= 2;
-// 		else if ((s[i] & 0xf8) == 0xf0) l -= 3;
-// 	}; return l;
-// }
-
 void codeError(Error *e) {
 	string white = "\x1b[97m";
-	string _white = "\x1b[97m";
 	string red = "\x1b[91m";
-	string black = "\x1b[97m";
 	string yellow = "\x1b[93m";
 	string blue = "\x1b[94;3m";
 	string clear = "\x1b[0m";
@@ -221,14 +228,14 @@ void codeError(Error *e) {
 	int lnl = intl(e->token->pos.line+1);
 	size_t errlen = strlen(e->file) + strlen(e->name) + strlen(e->data) + 14 + lnl;
 	if (errlen < w->ws_col) {
-		printf("%s", clear);
+		printf("%s%s", clear, white);
 		repeat("─", intl(e->token->pos.line+1) + 2);
-		printf("┬─%s%s%s %s %s%s─%s%s%s %s%s:%s%i%s:%s%i %s%s─%s%s%s %s %s%s",
-			_white, bold, red, e->name, clear,
-			white, _white, bold, blue, e->file, clear,
+		printf("┬─%s%s%s %s %s%s─%s%s %s%s:%s%i%s:%s%i %s%s─%s%s %s %s%s",
+			white, bold, red, e->name, clear,
+			white, bold, blue, e->file, clear,
 			yellow, e->token->pos.line, clear,
 			yellow, e->token->pos.start, clear,
-			white, _white, bold, black, e->data, clear, white
+			white, clear, bold, e->data, clear, white
 		);
 		repeat("─", w->ws_col - errlen - intl(e->token->pos.line) - intl(e->token->pos.start));
 		printf("%s", clear);
