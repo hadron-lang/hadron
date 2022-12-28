@@ -122,7 +122,11 @@ void util_linelog(Typed *v) {
 		} case LITERAL: {
 			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value); break;
 		} case IDENTIFIER: {
-			printf("\x1b[94m%s\x1b[0m\n", ((Identifier *)v)->name); break;
+			Identifier *id = (Identifier *)v;
+			id->kind
+				? printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind)
+				: printf("\x1b[94;3m%s\x1b[0m\n", id->name);
+			break;
 		} default: printf("\x1b[93mnull\x1b[0m\n"); break;
 	}
 }
@@ -130,7 +134,7 @@ void util_linelog(Typed *v) {
 void tab(small indent) {
 	for (small i = 0; i < indent; i++) {
 		// printf("%s  ", i%2 ? "" : "");
-		printf("  ");
+		printf("\x1b[30m  \x1b[0m");
 	}
 }
 
@@ -152,7 +156,9 @@ void util_log(Typed *v, small indent, small depth) {
 			break;
 		} case IDENTIFIER: {
 			Identifier *id = (Identifier *)v;
-			printf("\x1b[94m%s\x1b[0m\n", id->name);
+			id->kind
+				? printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind)
+				: printf("\x1b[94;3m%s\x1b[0m\n", id->name);
 			break;
 		} case PROGRAM: {
 			printf("\x1b[95mProgram\x1b[0m {\n");
@@ -170,6 +176,19 @@ void util_log(Typed *v, small indent, small depth) {
 			util_linelog((Typed *)decl->source);
 			for (int i = 0; i < decl->specifiers->l; i++) {
 				util_log(decl->specifiers->a[i], indent+1, depth);
+			};
+			tab(indent); printf("}\n");
+			break;
+		}  case FUNCTION_DECLARATION: {
+			FunctionDeclaration *decl = (FunctionDeclaration *)v;
+			printf("%s\x1b[95mFunctionDeclaration\x1b[0m {\n",
+				decl->async ? "\x1b[95;4mAsync\x1b[0m" : "");
+			tab(indent+1);
+			printf("\x1b[96mname\x1b[0m: ");
+			util_linelog((Typed *)decl->name);
+			if (decl->body) for (int i = 0; i < decl->body->l; i++) {
+				tab(indent+1);
+				util_log(decl->body->a[i], indent+1, depth);
 			};
 			tab(indent); printf("}\n");
 			break;
@@ -208,7 +227,7 @@ void printAST(Program *p, small depth) {
 }
 
 void codeError(Error *e) {
-	string white = "\x1b[97m";
+	string white = "\x1b[90m";
 	string red = "\x1b[91m";
 	string yellow = "\x1b[93m";
 	string blue = "\x1b[94;3m";
@@ -230,7 +249,9 @@ void codeError(Error *e) {
 	if (errlen < w->ws_col) {
 		printf("%s%s", clear, white);
 		repeat("─", intl(e->token->pos.line+1) + 2);
+		// repeat("-", intl(e->token->pos.line+1) + 2);
 		printf("┬─%s%s%s %s %s%s─%s%s %s%s:%s%i%s:%s%i %s%s─%s%s %s %s%s",
+		// printf("+-%s%s%s %s %s%s-%s%s %s%s:%s%i%s:%s%i %s%s─%s%s %s %s%s",
 			white, bold, red, e->name, clear,
 			white, bold, blue, e->file, clear,
 			yellow, e->token->pos.line, clear,
@@ -238,6 +259,7 @@ void codeError(Error *e) {
 			white, clear, bold, e->data, clear, white
 		);
 		repeat("─", w->ws_col - errlen - intl(e->token->pos.line) - intl(e->token->pos.start));
+		// repeat("-", w->ws_col - errlen - intl(e->token->pos.line) - intl(e->token->pos.start));
 		printf("%s", clear);
 	}
 	printf("\n");
@@ -247,6 +269,7 @@ void codeError(Error *e) {
 			printf("%s ", white);
 			repeat(" ", lnl - intl(l));
 			printf("%i │%s %s", l, clear, line);
+			// printf("%i |%s %s", l, clear, line);
 		} else if (l == e->token->pos.line) {
 			int lens[3] = {
 				e->token->pos.start-1,
@@ -259,14 +282,18 @@ void codeError(Error *e) {
 			printf("%s ", white);
 			repeat(" ", lnl - intl(l));
 			printf("%i │%s %s%s%s%s%s\n", l, clear, start, red, error, clear, end);
+			// printf("%i |%s %s%s%s%s%s\n", l, clear, start, red, error, clear, end);
 			free(start); free(error); free(end);
 		}
 	}
 	if (w->ws_col >= 5) {
 		printf("%s", white);
 		repeat("─", intl(e->token->pos.line+1)+2);
+		// repeat("-", intl(e->token->pos.line+1)+2);
 		printf("┴");
+		// printf("+");
 		repeat("─", w->ws_col - 1 - intl(e->token->pos.line+1)-2);
+		// repeat("-", w->ws_col - 1 - intl(e->token->pos.line+1)-2);
 		printf("%s\n", clear);
 	}
 	free(w);

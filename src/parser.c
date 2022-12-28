@@ -4,10 +4,11 @@ static void initParser(string, Array *, string);
 static bool end(void);
 static bool start(void);
 static Token *next(void);
+static Token *prev(void);
 static Token *peekNext(void);
-static Token *peekPrev(void);
 static Token *current(void);
 static bool match(Type);
+static bool nextIs(Type);
 static bool check(Value *);
 static bool matchAny(small, ...);
 static Value *fmatch(Type, string);
@@ -21,9 +22,9 @@ static Value *impSpec(void);
 static Value *impSpecArray(void);
 static Value *funcDecl(void);
 static Value *classDecl(void);
-static Value *asgnExpr(void);
+static Value *asgnExpr(Value *);
 static Value *exprStmt(void);
-static Value *identifier(void);
+static Value *identifier(Value *);
 static Value *literal(void);
 static Value *strLiteral(void);
 
@@ -44,8 +45,7 @@ void initParser(string code, Array *tokens, string file) {
 	parser.iterator = -1;
 	parser.code = code;
 	// call to avoid gcc warnings
-	peekPrev();
-	matchAny(0);
+	omatch(0);
 }
 
 void *nop(void *x) { if (x) free(x); return NULL; }
@@ -71,12 +71,12 @@ Token *next() {
 	if (!end()) return parser.tokens->a[++parser.iterator];
 	else return NULL;
 }
-Token *peekNext() {
-	if (!end()) return parser.tokens->a[parser.iterator+1];
+Token *prev() {
+	if (!start()) return parser.tokens->a[--parser.iterator];
 	else return NULL;
 }
-Token *peekPrev() {
-	if (!start()) return parser.tokens->a[parser.iterator-1];
+Token *peekNext() {
+	if (!end()) return parser.tokens->a[parser.iterator+1];
 	else return NULL;
 }
 Token *current() {
@@ -96,6 +96,10 @@ bool match(Type type) {
 	else return false;
 }
 
+bool nextIs(Type type) {
+	return peekNext() && peekNext()->type == type;
+}
+
 bool check(Value *r) {
 	if (!r) return true;
 	else if (r->error) {
@@ -109,29 +113,87 @@ Value *classDecl() {
 	if (check(n)) return nop(n);
 	return n;
 }
-Value *funcDecl() {
-	Value *n = fmatch(NAME, "unexpected token (5)");
-	if (check(n)) return nop(n);
-	return n;
-}
-Value *asgnExpr() {
-	Value *t = identifier();
-	if (check(t)) return nop(t);
-	Value *l = omatch(NAME);
-	Value *q = fmatch(EQ, "expected =");
-	if (check(q)) return nop(t), nop(l), nop(q);
-	Value *r = exprStmt();
-	if (check(r)) return nop(t), nop(l), nop(q), nop(r);
-	match(DELMT);
-	return toValue(initAssignmentExpression(
-		(Typed *)initIdentifier(getTokenContent(parser.code, l ? l->value : t->value)),
-		r->value
+Value *funcParam() {
+	Value *a = fmatch(NAME, "expected identifier");
+	if (check(a)) return nop(a);
+	Value *b = omatch(NAME);
+	return toValue(initIdentifier(
+		getTokenContent(parser.code, !b ? a->value : b->value),
+		getTokenContent(parser.code, b ? a->value : NULL)
 	));
 }
-Value *identifier() {
+Value *funcParams() {
+	Array *a = newArray(2);
+	if (match($PAREN)) return toValue(a);
+	Value *f = funcParam();
+	if (check(f)) return freeArray(a), nop(f);
+	pushArray(a, f->value);
+	while (match(SEP)) {
+		Value *s = funcParam();
+		if (check(s)) return freeArray(a), nop(s);
+		pushArray(a, s->value);
+	};
+	Value *e = fmatch($PAREN, "expected )");
+	if (check(e)) return freeArray(a), nop(e);
+	trimArray(a);
+	return toValue(a);
+}
+Value *funcBody() {
+	Array *a = newArray(2);
+	while (!match($CURLY)) {
+		Value *v = exprStmt();
+		if (check(v)) return freeArray(a), nop(v);
+		pushArray(a, v->value);
+	};
+	trimArray(a);
+	return toValue(a);
+}
+Value *funcDecl() {
+	bool a = false;
+	if (match(ASYNC)) a = true;
+	Value *f = fmatch(FUNC, "expected `func`");
+	if (check(f)) return nop(f);
+	free(f);
+	// Value *n = identifier(NULL, false);
+	// if (!n) return pushArray(parser.errors, error("Parse", parser.file, "wtf, no identifier", current())), NULL;
 	Value *n = fmatch(NAME, "expected identifier");
 	if (check(n)) return nop(n);
-	return n;
+	Value *lp = omatch(PAREN);
+	Value *params = NULL;
+	if (lp) params = funcParams();
+	free(lp);
+	Value *b = fmatch(CURLY, "expected {");
+	if (check(b)) return nop(n), nop(params);
+	if (match($CURLY)) return toValue(initFunctionDeclaration(a,
+		initIdentifier(getTokenContent(parser.code, n->value), NULL),
+		params ? params->value : NULL, NULL));
+	free(b);
+	Value *body = funcBody();
+	if (check(body)) return nop(body), nop(n), nop(params);
+	return toValue(initFunctionDeclaration(a,
+		initIdentifier(getTokenContent(parser.code, n->value), NULL),
+	params ? params->value : NULL, body ? body->value : NULL));
+}
+Value *asgnExpr(Value *t) {
+	prev();
+	Value *n = identifier(t);
+	if (!n) return nop(t);
+	Value *q = fmatch(EQ, "expected =");
+	if (check(q)) return nop(t), nop(n), nop(q);
+	Value *r = exprStmt();
+	if (check(r)) return nop(t), nop(n), nop(q), nop(r);
+	match(DELMT);
+	return toValue(initAssignmentExpression(n->value, r->value));
+}
+Value *identifier(Value *t) {
+	if (!match(NAME)) return NULL;
+	// Value *n = fmatch(NAME, "expected identifier");
+	// if (!n && report && check(n)) return nop(n);
+	// else if (!n && !report) return nop(n);
+	return toValue(initIdentifier(
+		getTokenContent(parser.code, current()),
+		t ? getTokenContent(parser.code, t->value) : NULL
+	));
 }
 Value *strLiteral() {
 	return toValue(initStringLiteral(
@@ -144,11 +206,13 @@ Value *literal() {
 	return toValue(initLiteral(getTokenContent(parser.code, current())));
 }
 Value *exprStmt() {
-	// printf("\nentered exprStmt:\n%s\n\n", getTokenContent(parser.code, next()));
-	if (peekNext() && peekNext()->type == NAME) return asgnExpr();
+	if (match(NAME)) {
+		Value *t = toValue(current());
+		if (match(NAME)) return asgnExpr(t);
+		else if (nextIs(EQ)) return asgnExpr(nop(t));
+		else return prev(), identifier(nop(t));
+	};
 	return literal();
-	next();
-	return NULL;
 }
 Value *toValue(void *x) {
 	if (!x) return NULL;
@@ -161,28 +225,29 @@ Value *impSpec() {
 	Value *n = fmatch(NAME, "unexpected token (9)");
 	if (check(n)) return nop(n);
 	if (!match(AS)) return toValue(initImportSpecifier(
-		initIdentifier(getTokenContent(parser.code, n->value)),
-		initIdentifier(getTokenContent(parser.code, n->value))
+		initIdentifier(getTokenContent(parser.code, n->value), NULL),
+		initIdentifier(getTokenContent(parser.code, n->value), NULL)
 	));
 	Value *ln = fmatch(NAME, "expected identifier");
 	if (check(ln)) return nop(ln);
 	return toValue(initImportSpecifier(
-		initIdentifier(getTokenContent(parser.code, n->value)),
-		initIdentifier(getTokenContent(parser.code, ln->value))
+		initIdentifier(getTokenContent(parser.code, n->value), NULL),
+		initIdentifier(getTokenContent(parser.code, ln->value), NULL)
 	));
 }
 Value *impSpecArray() {
 	Array *a = newArray(2);
+	if (match($CURLY)) return toValue(a);
 	Value *f = impSpec();
 	if (check(f)) return freeArray(a), nop(f);
 	pushArray(a, f->value);
 	while (match(SEP)) {
 		Value *s = impSpec();
-		if (check(s)) return nop(s);
+		if (check(s)) return freeArray(a), nop(s);
 		pushArray(a, s->value);
 	};
-	Value *e = fmatch(CBRACKET, "unexpected token bruh");
-	if (check(e)) return freeArray(a), nop(f), nop(e);
+	Value *e = fmatch($CURLY, "expected }");
+	if (check(e)) return freeArray(a), nop(e);
 	trimArray(a);
 	return toValue(a);
 }
@@ -191,7 +256,7 @@ Value *impDecl() {
 	if (check(n)) return nop(n);
 	Value *i = fmatch(IMPORT, "unexpected token (2)");
 	if (check(i)) return nop(i), nop(n);
-	if (match(CBRACKET)) {
+	if (match(CURLY)) {
 		Value *speca = impSpecArray();
 		if (check(speca)) return nop(speca), nop(n), nop(i);
 		match(DELMT);
@@ -217,15 +282,14 @@ Value *decl() {
 	// Value *r = malloc(sizeof(Value));
 	if (match(FROM)) return impDecl();
 	if (match(CLASS)) return classDecl();
-	if (match(FUNC)) return funcDecl();
+	if (nextIs(FUNC) || nextIs(ASYNC)) return funcDecl();
 	return exprStmt();
 }
 
 void synchronize() {
 	next();
 	while (!end()) {
-		if (current() && (current()->type == DELMT
-			|| current()->type == NEWLINE)) return;
+		if (current() && current()->type == DELMT) return;
 		if (peekNext()) switch (peekNext()->type) {
 			case CLASS: case IF:
 			case FUNC: case FOR:

@@ -22,7 +22,7 @@ string utfsubstr(string s, int start, int l) {
 }
 string utfcat(string a, string b) {
 	size_t len = strlen(a) + strlen(b);
-	string cat = malloc(len);
+	string cat = malloc(len+1);
 	strcpy(cat, a);
 	strcat(cat, b);
 	cat[len] = 0;

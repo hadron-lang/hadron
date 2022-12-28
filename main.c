@@ -52,7 +52,7 @@ int main(int argc, string *argv) {
 	FILE *fp = fopen(args.file, "rb");
 	if (fp == NULL) {
 		string e = utfcat("file \x1b[97m", args.file);
-		pushArray(errors, clierror(2, e, " does not exist"));
+		pushArray(errors, clierror(2, e, "\x1b[0;91m does not exist"));
 		free(e);
 	}
 	if (check(errors, false)) return -1;

@@ -9,9 +9,10 @@ Array *newArray(int s) {
 }
 
 void initArray(Array *a, int s) {
-	a->a = malloc(sizeof(void *) * s);
+	int size = s < 2 ? 2 : s;
+	a->a = malloc(sizeof(void *) * size);
 	a->l = 0;
-	a->s = s;
+	a->s = size;
 }
 
 void trimArray(Array *a) {

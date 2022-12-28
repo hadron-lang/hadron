@@ -75,9 +75,12 @@ typedef enum __attribute__((__packed__)) Types {
 	AT,       //* @
 	HASH,     //* #
 	QUERY,    //* ?
-	BRACKET,  //* []
-	PAREN,    //* ()
-	CBRACKET, //* {}
+	BRACKET,  //* [
+	$BRACKET, //* ]
+	PAREN,    //* (
+	$PAREN,   //* )
+	CURLY,    //* {
+	$CURLY   ,//* }
 	HEX,      //* 0xff
 	OCTAL,    //* 0o77
 	BIN,      //* 0b1111
@@ -120,6 +123,7 @@ typedef enum __attribute__((__packed__)) AST_Types {
 	IMPORT_DECLARATION,
 	IMPORT_SPECIFIER,
 	ASSIGNMENT_EXPRESSION,
+	FUNCTION_DECLARATION,
 	LITERAL,
 	STRING_LITERAL,
 	IDENTIFIER
@@ -132,6 +136,7 @@ typedef struct Typed {
 typedef struct Identifier { // extends Typed
 	AST_Type type;
 	string name;
+	string kind;
 } Identifier;
 
 typedef struct Literal { // extends Typed
@@ -161,6 +166,14 @@ typedef struct ImportDeclaration { // extends Typed
 	Array *specifiers;
 } ImportDeclaration;
 
+typedef struct FunctionDeclaration {
+	AST_Type type;
+	bool async;
+	Identifier *name;
+	Array *params;
+	Array *body;
+} FunctionDeclaration;
+
 typedef struct AssignmentExpression { // extends Typed
 	AST_Type type;
 	Typed *left;
@@ -175,11 +188,12 @@ typedef struct Result {
 extern string getTokenContent(string code, Token*);
 extern void freeProgram(Program *);
 extern Program *initProgram(int);
+extern FunctionDeclaration *initFunctionDeclaration(bool async, Identifier *name, Array *params, Array *body);
 extern ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local_name);
 extern ImportDeclaration *initImportDeclaration(StringLiteral *, Array *import_specifier_array);
 extern AssignmentExpression *initAssignmentExpression(Typed *left, Typed *right);
 extern Literal *initLiteral(string value);
 extern StringLiteral *initStringLiteral(string value);
-extern Identifier *initIdentifier(string name);
+extern Identifier *initIdentifier(string name, string kind);
 
 #endif

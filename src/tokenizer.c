@@ -70,10 +70,13 @@ Result *tokenize(string code, string fname) {
 			case ';': addToken(DELMT); continue;
 			case ':': addToken(COLON); continue;
 			case '\0': addToken(_EOF); continue;
-			case '(': case ')': pushArray(tokenizer.stack, cloneToken(addToken(PAREN))); continue;
-			case '[': case ']': pushArray(tokenizer.stack, cloneToken(addToken(BRACKET))); continue;
-			case '{': case '}': pushArray(tokenizer.stack, cloneToken(addToken(CBRACKET))); continue;
-			case '\n': addToken(NEWLINE); continue;
+			case '(': pushArray(tokenizer.stack, cloneToken(addToken(PAREN))); continue;
+			case ')': pushArray(tokenizer.stack, cloneToken(addToken($PAREN))); continue;
+			case '[': pushArray(tokenizer.stack, cloneToken(addToken(BRACKET))); continue;
+			case ']': pushArray(tokenizer.stack, cloneToken(addToken($BRACKET))); continue;
+			case '{': pushArray(tokenizer.stack, cloneToken(addToken(CURLY))); continue;
+			case '}': pushArray(tokenizer.stack, cloneToken(addToken($CURLY))); continue;
+			case '\n': continue;
 			case ' ': case '\t': continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
@@ -226,12 +229,10 @@ void runDistanceCheck(Array *r) {
 		for (int i = 0; i+dist < r->l-1; i++) {
 			Token *a = getArray(r, i);
 			Token *b = getArray(r, i+dist+1);
-			char m = a == NULL ? 0 : tokenizer.code[a->pos.absStart];
-			char n = b == NULL ? 0 : tokenizer.code[b->pos.absStart];
 			if (
-				(m == '(' && n == ')') ||
-				(m == '[' && n == ']') ||
-				(m == '{' && n == '}')
+				(a->type == PAREN && b->type == $PAREN) ||
+				(a->type == BRACKET && b->type == $BRACKET) ||
+				(a->type == CURLY && b->type == $CURLY)
 			) { removeArray(r, i); removeArray(r, i+dist+1); }
 		};
 	};
@@ -242,9 +243,7 @@ void runDistanceCheck(Array *r) {
 			"Syntax", tokenizer.file, "unmatched token", cloneToken(t)
 		));
 	};
-	freeArray(r);
-	free(temp->a);
-	free(temp);
+	freeArray(temp);
 }
 
 void runStackCheck() {
@@ -253,14 +252,12 @@ void runStackCheck() {
 	for (int i = 0; i < s->l; i++) {
 		Token *t = s->a[i];
 		Token *p = lastArray(r);
-		char c = tokenizer.code[t->pos.absStart];
-		char x = p == NULL ? 0 : tokenizer.code[p->pos.absStart];
-		     if (c == '(') pushArray(r, cloneToken(t));
-		else if (c == '[') pushArray(r, cloneToken(t));
-		else if (c == '{') pushArray(r, cloneToken(t));
-		else if (x == '(' && c == ')') popArray(r);
-		else if (x == '[' && c == ']') popArray(r);
-		else if (x == '{' && c == '}') popArray(r);
+		     if (t->type == PAREN)   pushArray(r, cloneToken(t));
+		else if (t->type == BRACKET) pushArray(r, cloneToken(t));
+		else if (t->type == CURLY)   pushArray(r, cloneToken(t));
+		else if (p && p->type == PAREN   && t->type == $PAREN)   popArray(r);
+		else if (p && p->type == BRACKET && t->type == $BRACKET) popArray(r);
+		else if (p && p->type == CURLY   && t->type == $CURLY)   popArray(r);
 		else pushArray(r, cloneToken(t));
 	}; freeArray(s);
 	runDistanceCheck(r);

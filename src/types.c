@@ -64,9 +64,19 @@ StringLiteral *initStringLiteral(string v) {
 	ltr->value = v;
 	return ltr;
 }
-Identifier *initIdentifier(string n) {
+Identifier *initIdentifier(string n, string k) {
 	Identifier *id = malloc(sizeof(Identifier));
 	id->type = IDENTIFIER;
 	id->name = n;
+	id->kind = k;
 	return id;
+}
+FunctionDeclaration *initFunctionDeclaration(bool a, Identifier *n, Array *p, Array *b) {
+	FunctionDeclaration *decl = malloc(sizeof(FunctionDeclaration));
+	decl->type = FUNCTION_DECLARATION;
+	decl->name = n;
+	decl->async = a;
+	decl->body = b;
+	decl->params = p;
+	return decl;
 }
