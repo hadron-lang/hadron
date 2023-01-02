@@ -44,8 +44,6 @@ void initParser(string code, Array *tokens, string file) {
 	parser.errors = newArray(2);
 	parser.iterator = -1;
 	parser.code = code;
-	// call to avoid gcc warnings
-	omatch(0);
 }
 
 void *nop(void *x) { if (x) free(x); return NULL; }
@@ -109,7 +107,7 @@ bool check(Value *r) {
 }
 
 Value *classDecl() {
-	Value *n = fmatch(NAME, "unexpected token (6)");
+	Value *n = identifier(NULL);
 	if (check(n)) return nop(n);
 	return n;
 }
@@ -177,7 +175,7 @@ Value *funcDecl() {
 Value *asgnExpr(Value *t) {
 	prev();
 	Value *n = identifier(t);
-	if (!n) return nop(t);
+	if (check(n)) return nop(t), nop(n);
 	Value *q = fmatch(EQ, "expected =");
 	if (check(q)) return nop(t), nop(n), nop(q);
 	Value *r = exprStmt();
@@ -186,12 +184,10 @@ Value *asgnExpr(Value *t) {
 	return toValue(initAssignmentExpression(n->value, r->value));
 }
 Value *identifier(Value *t) {
-	if (!match(NAME)) return NULL;
-	// Value *n = fmatch(NAME, "expected identifier");
-	// if (!n && report && check(n)) return nop(n);
-	// else if (!n && !report) return nop(n);
+	Value *id = fmatch(NAME, "expected identifier");
+	if (check(id)) return nop(id), nop(t);
 	return toValue(initIdentifier(
-		getTokenContent(parser.code, current()),
+		getTokenContent(parser.code, id->value),
 		t ? getTokenContent(parser.code, t->value) : NULL
 	));
 }
@@ -287,16 +283,16 @@ Value *decl() {
 }
 
 void synchronize() {
-	next();
 	while (!end()) {
-		if (current() && current()->type == DELMT) return;
 		if (peekNext()) switch (peekNext()->type) {
 			case CLASS: case IF:
 			case FUNC: case FOR:
 			case WHILE: case DO:
-			case RET: return;
-			default: break;
-		}; next();
+			case FROM: case RET:
+			case ASYNC: return;
+			case DELMT: next(); return;
+			default: next();
+		};
 	}
 }
 

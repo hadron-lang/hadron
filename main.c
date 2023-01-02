@@ -10,7 +10,6 @@ static struct Args {
 	Lang lang;
 	small mode;
 	bool set;
-	bool shortlog;
 	string file;
 } args;
 
@@ -18,7 +17,6 @@ void init(int argc, string *argv, Array *errs) {
 	args.lang = L_UNKN;
 	args.mode = 0;
 	args.set = false;
-	args.shortlog = false;
 	args.file = NULL;
 	for (small i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
@@ -32,14 +30,12 @@ void init(int argc, string *argv, Array *errs) {
 				pushArray(errs, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
 			args.mode = 0;
 			args.set = true;
-		} else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--short") == 0) {
-			args.shortlog = true;
 		} else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--lang") == 0) {
 			if (isLang(argv[i+1])) args.lang = parseLang(argv[++i]);
 		} else if (isFile(argv[i])) args.file = argv[i];
 	};
 	if (!args.mode && args.lang) pushArray(errs, clierror(1, "language is not available in interpreter"));
-	if (/*args.mode &&*/ !args.file) pushArray(errs, clierror(1, "you should provide at least one file to compile"));
+	if (args.mode  && !args.file) pushArray(errs, clierror(1, "you should provide at least one file to compile"));
 	if (args.mode && !args.lang) pushArray(errs, clierror(1, "you should choose one language to compile to"));
 }
 
@@ -76,8 +72,6 @@ int main(int argc, string *argv) {
 
 	Result *t = tokenize(contents, args.file);
 	if (check(t->errors, true)) return -1;
-
-	// printTokens(contents, t->data);
 
 	Result *p = parse(contents, t->data, args.file);
 	if (check(p->errors, true)) return -1;
