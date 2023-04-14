@@ -171,11 +171,14 @@ Result *tokenize(string code, string fname) {
 				if (current() == '0') {
 					if (match('o') || isOct(peekNext())) {
 						while (isOct(peekNext())) { next(); }
+						addToken(OCTAL);
 					} else if (match('b')) {
 						while (isBin(peekNext())) { next(); }
+						addToken(BIN);
 					} else if (match('x')) {
 						while (isHex(peekNext())) { next(); }
-					} else { addToken(DEC); } continue;
+						addToken(HEX);
+					} else { addToken(DEC); }; continue;
 				}
 				if (isDec(current())) {
 					while (isDec(peekNext())) next();
@@ -186,29 +189,29 @@ Result *tokenize(string code, string fname) {
 					while (isAlpha(peekNext()) || isDec(peekNext())) next();
 					int len = tokenizer.iterator+1 - tokenizer.token.absStart;
 					string sub = substr(code, tokenizer.token.absStart, len);
-					if      (!strcmp(sub, "for"   )) addToken(FOR);
-					else if (!strcmp(sub, "class" )) addToken(CLASS);
-					else if (!strcmp(sub, "func"  )) addToken(FUNC);
-					else if (!strcmp(sub, "true"  )) addToken(TRUE);
-					else if (!strcmp(sub, "false" )) addToken(FALSE);
-					else if (!strcmp(sub, "null"  )) addToken(_NULL);
-					else if (!strcmp(sub, "while" )) addToken(WHILE);
-					else if (!strcmp(sub, "if"    )) addToken(IF);
-					else if (!strcmp(sub, "do"    )) addToken(DO);
-					else if (!strcmp(sub, "else"  )) addToken(ELSE);
-					else if (!strcmp(sub, "from"  )) addToken(FROM);
+					if      (!strcmp(sub, "for"   )) addToken(FOR   );
+					else if (!strcmp(sub, "class" )) addToken(CLASS );
+					else if (!strcmp(sub, "func"  )) addToken(FUNC  );
+					else if (!strcmp(sub, "true"  )) addToken(TRUE  );
+					else if (!strcmp(sub, "false" )) addToken(FALSE );
+					else if (!strcmp(sub, "null"  )) addToken(_NULL );
+					else if (!strcmp(sub, "while" )) addToken(WHILE );
+					else if (!strcmp(sub, "if"    )) addToken(IF    );
+					else if (!strcmp(sub, "do"    )) addToken(DO    );
+					else if (!strcmp(sub, "else"  )) addToken(ELSE  );
+					else if (!strcmp(sub, "from"  )) addToken(FROM  );
 					else if (!strcmp(sub, "import")) addToken(IMPORT);
-					else if (!strcmp(sub, "new"   )) addToken(NEW);
-					else if (!strcmp(sub, "await" )) addToken(AWAIT);
-					else if (!strcmp(sub, "as"    )) addToken(AS);
-					else if (!strcmp(sub, "async" )) addToken(ASYNC);
-					else if (!strcmp(sub, "ret"   )) addToken(RET);
-					else addToken(NAME);
+					else if (!strcmp(sub, "new"   )) addToken(NEW   );
+					else if (!strcmp(sub, "await" )) addToken(AWAIT );
+					else if (!strcmp(sub, "as"    )) addToken(AS    );
+					else if (!strcmp(sub, "async" )) addToken(ASYNC );
+					else if (!strcmp(sub, "return")) addToken(RETURN);
+					else                             addToken(NAME  );
 					free(sub); continue;
 				};
 				if      ((current() & 0x80) == 0x00);                            // 1xxxxxxx == 0xxxxxxx
-				else if ((current() & 0xe0) == 0xc0) { next(); }                 // 111xxxxx == 110xxxxx
-				else if ((current() & 0xf0) == 0xe0) { next(); next(); }         // 1111xxxx == 1110xxxx
+				else if ((current() & 0xe0) == 0xc0) { next();                 } // 111xxxxx == 110xxxxx
+				else if ((current() & 0xf0) == 0xe0) { next(); next();         } // 1111xxxx == 1110xxxx
 				else if ((current() & 0xf8) == 0xf0) { next(); next(); next(); } // 11111xxx == 11110xxx
 				Token* t = addToken(UNDEF);
 				pushArray(tokenizer.errors, error("Syntax", fname, "unexpected token", t));
@@ -220,7 +223,7 @@ Result *tokenize(string code, string fname) {
 	Result *result = malloc(sizeof(Result));
 	trimArray(tokenizer.tokens);
 	result->errors = tokenizer.errors;
-	result->data = tokenizer.tokens;
+	result->data   = tokenizer.tokens;
 	return result;
 }
 
@@ -229,10 +232,11 @@ void runDistanceCheck(Array *r) {
 		for (int i = 0; i+dist < r->l-1; i++) {
 			Token *a = getArray(r, i);
 			Token *b = getArray(r, i+dist+1);
+			if (!a || !b) continue;
 			if (
-				(a->type == PAREN && b->type == $PAREN) ||
+				(a->type == PAREN   && b->type == $PAREN  ) ||
 				(a->type == BRACKET && b->type == $BRACKET) ||
-				(a->type == CURLY && b->type == $CURLY)
+				(a->type == CURLY   && b->type == $CURLY  )
 			) { removeArray(r, i); removeArray(r, i+dist+1); }
 		};
 	};
@@ -252,12 +256,12 @@ void runStackCheck() {
 	for (int i = 0; i < s->l; i++) {
 		Token *t = s->a[i];
 		Token *p = lastArray(r);
-		     if (t->type == PAREN)   pushArray(r, cloneToken(t));
+		     if (t->type == PAREN  ) pushArray(r, cloneToken(t));
 		else if (t->type == BRACKET) pushArray(r, cloneToken(t));
-		else if (t->type == CURLY)   pushArray(r, cloneToken(t));
-		else if (p && p->type == PAREN   && t->type == $PAREN)   popArray(r);
+		else if (t->type == CURLY  ) pushArray(r, cloneToken(t));
+		else if (p && p->type == PAREN   && t->type == $PAREN  ) popArray(r);
 		else if (p && p->type == BRACKET && t->type == $BRACKET) popArray(r);
-		else if (p && p->type == CURLY   && t->type == $CURLY)   popArray(r);
+		else if (p && p->type == CURLY   && t->type == $CURLY  ) popArray(r);
 		else pushArray(r, cloneToken(t));
 	}; freeArray(s);
 	runDistanceCheck(r);
@@ -267,14 +271,14 @@ Token *addToken(Type type) {
 	Token *token = malloc(sizeof(Token));
 	token->type = type;
 	token->pos.absStart = tokenizer.token.absStart;
-	token->pos.absEnd = tokenizer.iterator+1;
-	token->pos.start = tokenizer.token.start;
-	token->pos.end = tokenizer.character;
-	token->pos.line = tokenizer.line;
+	token->pos.absEnd   = tokenizer.iterator+1;
+	token->pos.start    = tokenizer.token.start;
+	token->pos.end      = tokenizer.character;
+	token->pos.line     = tokenizer.line;
 	pushArray(tokenizer.tokens, token);
 	return token;
 }
-char peekNext() { return end() ? 0 : tokenizer.code[tokenizer.iterator+1]; }
+char peekNext() { return   end() ? 0 : tokenizer.code[tokenizer.iterator+1]; }
 char peekPrev() { return start() ? 0 : tokenizer.code[tokenizer.iterator-1]; }
 char next() {
 	char r = !end() ? tokenizer.code[++tokenizer.iterator] : 0;
@@ -291,7 +295,7 @@ bool match(char c) {
 	if (peekNext() == c) { next(); return true; }
 	else return false;
 }
-bool isDec(char c) { return c >= '0' && c <= '9'; }
+bool isDec(char c) { return (c >= '0' && c <= '9'); }
 bool isBin(char c) { return c == '0' ||  c == '1'; }
 bool isOct(char c) { return c >= '0' && c <= '7'; }
 bool isHex(char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }

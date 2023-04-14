@@ -17,6 +17,25 @@ int intl(int x) {
 	};
 }
 
+char *getBinaryOperator(BinaryOperator oper) {
+	switch (oper) {
+		case BIN_ADD: return "+";
+		case BIN_SUB: return "-";
+		case BIN_MUL: return "*";
+		case BIN_DIV: return "/";
+		case BIN_LAND: return "&&";
+		case BIN_LOR: return "||";
+		case BIN_BAND: return "&";
+		case BIN_BOR: return "|";
+		case BIN_BXOR: return "^";
+		case BIN_REM: return "%";
+		case BIN_RSHIFT: return ">>";
+		case BIN_LSHIFT: return "<<";
+		case BIN_POW: return "**";
+		default: return "";
+	}
+}
+
 void printToken(Token* t) {
 	string key0 = "\x1b[94m";
 	string key1 = "\x1b[96m";
@@ -123,9 +142,11 @@ void util_linelog(Typed *v) {
 			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value); break;
 		} case IDENTIFIER: {
 			Identifier *id = (Identifier *)v;
-			id->kind
-				? printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind)
-				: printf("\x1b[94;3m%s\x1b[0m\n", id->name);
+			printf("\x1b[94;3m%s\x1b[0m\n", id->name);
+			break;
+		} case TYPED_IDENTIFIER: {
+			TypedIdentifier *id = (TypedIdentifier *)v;
+			printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind);
 			break;
 		} default: printf("\x1b[93mnull\x1b[0m\n"); break;
 	}
@@ -146,6 +167,38 @@ void util_log(Typed *v, small indent, small depth) {
 	}
 	// if (!v) printf("\x1b[93m(null)\x1b[0m\n");
 	switch (v->type) {
+		case EXPRESSION_STATEMENT: {
+			printf("\x1b[95mExpressionStatement\x1b[0m {\n");
+			ExpressionStatement *expr = (ExpressionStatement *)v;
+			util_log(expr->expr, indent+1, depth);
+			break;
+		}
+		case CALL_EXPRESSION: {
+			printf("\x1b[95mCallExpression\x1b[0m {\n");
+			CallExpression *expr = (CallExpression *)v;
+			tab(indent+1);
+			printf("\x1b[96mcallee\x1b[0m: ");
+			util_log((Typed *)expr->callee, indent, depth);
+			for (int i = 0; i < expr->params->l; i++) {
+				tab(indent+1);
+				util_log(expr->params->a[i], indent+1, depth);
+			};
+			tab(indent); printf("}\n");
+			break;
+		}
+		case BINARY_EXPRESSION: {
+			BinaryExpression *expr = (BinaryExpression *)v;
+			printf("\x1b[95mBinaryExpression\x1b[0m<\x1b[92m%s\x1b[0m> {\n",
+				getBinaryOperator(expr->operator));
+			tab(indent+1);
+			printf("\x1b[96mleft\x1b[0m: ");
+			util_log((Typed *)expr->left, indent+1, depth);
+			tab(indent+1);
+			printf("\x1b[96mright\x1b[0m: ");
+			util_log((Typed *)expr->right, indent+1, depth);
+			tab(indent); printf("}\n");
+			break;
+		}
 		case STRING_LITERAL: {
 			StringLiteral *ltr = (StringLiteral *)v;
 			printf("\x1b[92m\"%s\"\x1b[0m\n", ltr->value);
@@ -156,9 +209,11 @@ void util_log(Typed *v, small indent, small depth) {
 			break;
 		} case IDENTIFIER: {
 			Identifier *id = (Identifier *)v;
-			id->kind
-				? printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind)
-				: printf("\x1b[94;3m%s\x1b[0m\n", id->name);
+			printf("\x1b[94;3m%s\x1b[0m\n", id->name);
+			break;
+		} case TYPED_IDENTIFIER: {
+			TypedIdentifier *id = (TypedIdentifier *)v;
+			printf("\x1b[94;3m%s\x1b[0m <\x1b[34;1m%s\x1b[0m>\n", id->name, id->kind);
 			break;
 		} case PROGRAM: {
 			printf("\x1b[95mProgram\x1b[0m {\n");

@@ -17,6 +17,10 @@ Result *py_compile(Program *prog) {
 	Result *res = malloc(sizeof(Result));
 	res->errors = newArray(2);
 
+	printf("%i\n", prog->type);
+
+	util_func0();
+	util_func1();
 	// code
 	// res->data = NULL;
 

@@ -45,6 +45,13 @@ ImportDeclaration *initImportDeclaration(StringLiteral *src, Array *speca) {
 	decl->specifiers = speca;
 	return decl;
 }
+ClassDeclaration *initClassDeclaration(Identifier *n, Array *b) {
+	ClassDeclaration *decl = malloc(sizeof(ClassDeclaration));
+	decl->type = CLASS_DECLARATION;
+	decl->name = n;
+	decl->body = b;
+	return decl;
+}
 AssignmentExpression *initAssignmentExpression(Typed *l, Typed *r) {
 	AssignmentExpression *asgn = malloc(sizeof(AssignmentExpression));
 	asgn->type = ASSIGNMENT_EXPRESSION;
@@ -64,19 +71,49 @@ StringLiteral *initStringLiteral(string v) {
 	ltr->value = v;
 	return ltr;
 }
-Identifier *initIdentifier(string n, string k) {
+Identifier *initIdentifier(string n) {
 	Identifier *id = malloc(sizeof(Identifier));
+	id->type = IDENTIFIER;
+	id->name = n;
+	return id;
+}
+TypedIdentifier *initTypedIdentifier(string n, string k) {
+	TypedIdentifier *id = malloc(sizeof(TypedIdentifier));
 	id->type = IDENTIFIER;
 	id->name = n;
 	id->kind = k;
 	return id;
+
 }
 FunctionDeclaration *initFunctionDeclaration(bool a, Identifier *n, Array *p, Array *b) {
 	FunctionDeclaration *decl = malloc(sizeof(FunctionDeclaration));
 	decl->type = FUNCTION_DECLARATION;
-	decl->name = n;
 	decl->async = a;
+	decl->name = n;
 	decl->body = b;
 	decl->params = p;
 	return decl;
+}
+
+CallExpression *initCallExpression(Identifier *c, Array *p) {
+	CallExpression *expr = malloc(sizeof(CallExpression));
+	expr->type = CALL_EXPRESSION;
+	expr->callee = c;
+	expr->params = p;
+	return expr;
+}
+
+BinaryExpression *initBinaryExpression(BinaryOperator o, Typed *l, Typed *r) {
+	BinaryExpression *expr = malloc(sizeof(BinaryExpression));
+	expr->type = BINARY_EXPRESSION;
+	expr->left = l;
+	expr->right = r;
+	expr->operator = o;
+	return expr;
+}
+
+ExpressionStatement *initExpressionStatement(Typed *e) {
+	ExpressionStatement *stmt = malloc(sizeof(ExpressionStatement));
+	stmt->expr = e;
+	return stmt;
 }

@@ -62,7 +62,7 @@ typedef enum __attribute__((__packed__)) Types {
 	AWAIT,
 	AS,
 	ASYNC,
-	RET,
+	RETURN,
 
 	// TYPE
 	STR,      //* "hello world"
@@ -97,8 +97,8 @@ typedef enum __attribute__((__packed__)) Types {
 	BAND,   //* &
 	BOR,    //* |
 	BXOR,   //* ^
-	BNOT,   //* ~
-	LNOT,   //* !
+	BNOT,   //* ~ (unary)
+	LNOT,   //* ! (unary)
 	LSHIFT, //* <<
 	RSHIFT, //* >>
 	POW,    //* **
@@ -123,10 +123,16 @@ typedef enum __attribute__((__packed__)) AST_Types {
 	IMPORT_DECLARATION,
 	IMPORT_SPECIFIER,
 	ASSIGNMENT_EXPRESSION,
+	CALL_EXPRESSION,
+	BINARY_EXPRESSION,
 	FUNCTION_DECLARATION,
+	ASYNC_FUNCTION_DECLARATION,
+	CLASS_DECLARATION,
 	LITERAL,
 	STRING_LITERAL,
-	IDENTIFIER
+	IDENTIFIER,
+	TYPED_IDENTIFIER,
+	EXPRESSION_STATEMENT
 } AST_Type;
 
 typedef struct Typed {
@@ -136,8 +142,13 @@ typedef struct Typed {
 typedef struct Identifier { // extends Typed
 	AST_Type type;
 	string name;
-	string kind;
 } Identifier;
+
+typedef struct TypedIdentifier { // extends Typed
+	AST_Type type;
+	string name;
+	string kind;
+} TypedIdentifier;
 
 typedef struct Literal { // extends Typed
 	AST_Type type;
@@ -167,18 +178,70 @@ typedef struct ImportDeclaration { // extends Typed
 } ImportDeclaration;
 
 typedef struct FunctionDeclaration {
-	AST_Type type;
 	bool async;
+	AST_Type type;
 	Identifier *name;
 	Array *params;
 	Array *body;
 } FunctionDeclaration;
 
+typedef struct ClassDeclaration {
+	AST_Type type;
+	Identifier *name;
+	Array *body;
+} ClassDeclaration;
+
+typedef struct CallExpression {
+	AST_Type type;
+	Identifier *callee;
+	Array *params;
+} CallExpression;
+
+typedef struct ExpressionStatement {
+	AST_Type type;
+	Typed *expr;
+} ExpressionStatement;
+
+typedef enum BinaryAssignmentOperators {
+	BIN_ASGN_EQ = 1,
+	BIN_ASGN_ADD_EQ,
+	BIN_ASGN_SUB_EQ,
+	BIN_ASGN_MUL_EQ,
+	BIN_ASGN_DIV_EQ,
+	BIN_ASGN_LAND_EQ,
+	BIN_ASGN_LOR_EQ,
+	BIN_ASGN_BAND_EQ,
+	BIN_ASGN_BOR_EQ,
+	BIN_ASGN_BXOR_EQ,
+	BIN_ASGN_REM_EQ,
+	BIN_ASGN_RSHIFT_EQ,
+	BIN_ASGN_LSHIFT_EQ
+} BinaryAssignmentOperator;
+
 typedef struct AssignmentExpression { // extends Typed
 	AST_Type type;
 	Typed *left;
 	Typed *right;
+	BinaryAssignmentOperator operator;
 } AssignmentExpression;
+
+typedef enum BinaryOperators {
+	BIN_UNDEF,
+	BIN_ADD, BIN_SUB,
+	BIN_MUL, BIN_DIV,
+	BIN_LAND, BIN_LOR,
+	BIN_BAND, BIN_BOR,
+	BIN_BXOR, BIN_REM,
+	BIN_RSHIFT, BIN_LSHIFT,
+	BIN_POW
+} BinaryOperator;
+
+typedef struct BinaryExpression {
+	AST_Type type;
+	Typed *left;
+	Typed *right;
+	BinaryOperator operator;
+} BinaryExpression;
 
 typedef struct Result {
 	Array *errors;
@@ -189,11 +252,16 @@ extern string getTokenContent(string code, Token*);
 extern void freeProgram(Program *);
 extern Program *initProgram(int);
 extern FunctionDeclaration *initFunctionDeclaration(bool async, Identifier *name, Array *params, Array *body);
+extern ClassDeclaration *initClassDeclaration(Identifier *name, Array *body);
 extern ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local_name);
 extern ImportDeclaration *initImportDeclaration(StringLiteral *, Array *import_specifier_array);
 extern AssignmentExpression *initAssignmentExpression(Typed *left, Typed *right);
 extern Literal *initLiteral(string value);
 extern StringLiteral *initStringLiteral(string value);
-extern Identifier *initIdentifier(string name, string kind);
+extern Identifier *initIdentifier(string name);
+extern TypedIdentifier *initTypedIdentifier(string name, string kind);
+extern CallExpression *initCallExpression(Identifier *callee, Array *params);
+extern BinaryExpression *initBinaryExpression(BinaryOperator oper, Typed *left, Typed *right);
+extern ExpressionStatement *initExpressionStatement(Typed *expr);
 
 #endif
