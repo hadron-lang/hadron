@@ -4,6 +4,8 @@ COMPILE=gcc -o out/debug.bin $(SRC) $(CARGS)
 
 build:
 	gcc -o hadron $(SRC) $(CARGS)
+check:
+	echo ok
 test:
 	gcc $(CARGS) -lm -lcriterion -o out/test.bin tests/test.c
 	./out/test.bin
