@@ -1,3 +1,5 @@
+:warning: **This project is still in progress, most of the features described here are not implemented** :warning:
+
 # hadron
 
 hadron is a custom programming language written in C. It is designed to be a versatile language that can be transcompiled to other languages or interpreted. It aims to provide a simple and intuitive syntax, while still being powerful and flexible.
