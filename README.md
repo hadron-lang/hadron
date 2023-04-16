@@ -1,13 +1,16 @@
-:warning: **This project is still in progress, most of the features described here are not implemented** :warning:
-
-# hadron
-
 <p align="center">
     <a href="https://github.com/webd3vs/hadron/build"><img src="https://img.shields.io/github/actions/workflow/status/webd3vs/hadron/c-cpp.yml?colorA=333&colorB=afa&style=for-the-badge"></a>
     <a href="https://github.com/webd3vs/hadron/stargazers"><img src="https://img.shields.io/github/stars/webd3vs/hadron?colorA=333&colorB=ffa&style=for-the-badge"></a>
     <a href="https://github.com/webd3vs/hadron/issues"><img src="https://img.shields.io/github/issues/webd3vs/hadron?colorA=333&colorB=faa&style=for-the-badge"></a>
     <a href="https://github.com/webd3vs/hadron/contributors"><img src="https://img.shields.io/github/contributors/webd3vs/hadron?colorA=333&colorB=aaf&style=for-the-badge"></a>
 </p>
+<h1 align="center">hadron</h1>
+
+### *Hello and welcome to Hadron :wave:, an early-stage language development project! We're thrilled that you've stopped by our project and hope you'll consider contributing to help us speed up development.*
+### *We welcome any ideas, feedback, and contributions from the community. Whether you're a seasoned developer or just starting out, we'd love to hear from you.*
+### *Please take a look at our documentation and feel free to reach out to us if you have any questions.*
+
+---
 
 hadron is a custom programming language written in C. It is designed to be a versatile language that can be transcompiled to other languages or interpreted. It aims to provide a simple and intuitive syntax, while still being powerful and flexible.
 
