@@ -36,7 +36,8 @@ void init(int argc, string *argv, Array *errs) {
 	};
 	if (args.mode == INTERPRET &&  args.lang) pushArray(errs, clierror(1, "language is not available in interpreter"));
 	if (args.mode == COMPILE   && !args.file) pushArray(errs, clierror(1, "you should provide at least one file to compile"));
-	if (args.mode == COMPILE   && !args.lang) pushArray(errs, clierror(1, "you should choose one language to compile to"));
+	if (args.mode == COMPILE   && !args.lang) pushArray(errs, clierror(1, "you should choose one language to compile to")); 
+    if (args.mode == INTERPRET && !args.file) pushArray(errs, clierror(1, "REPL interpret mode not available yet"));
 }
 
 int main(int argc, string *argv) {

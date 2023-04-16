@@ -2,9 +2,17 @@
 
 # hadron
 
+<p align="center">
+    <a href="https://github.com/webd3vs/hadron/build"><img src="https://img.shields.io/github/actions/workflow/status/webd3vs/hadron/c-cpp.yml?colorA=333&colorB=afa&style=for-the-badge"></a>
+    <a href="https://github.com/webd3vs/hadron/stargazers"><img src="https://img.shields.io/github/stars/webd3vs/hadron?colorA=333&colorB=ffa&style=for-the-badge"></a>
+    <a href="https://github.com/webd3vs/hadron/issues"><img src="https://img.shields.io/github/issues/webd3vs/hadron?colorA=333&colorB=faa&style=for-the-badge"></a>
+    <a href="https://github.com/webd3vs/hadron/contributors"><img src="https://img.shields.io/github/contributors/webd3vs/hadron?colorA=333&colorB=aaf&style=for-the-badge"></a>
+</p>
+
 hadron is a custom programming language written in C. It is designed to be a versatile language that can be transcompiled to other languages or interpreted. It aims to provide a simple and intuitive syntax, while still being powerful and flexible.
 
 ## Planned Features
+
  - Simple and intuitive syntax
  - Dynamic type system
  - Garbage collection
@@ -16,7 +24,7 @@ hadron is a custom programming language written in C. It is designed to be a ver
 
 ## Getting Started
 
-To build hadron, you need to have a C compiler installed on your system. You can build hadron by running the following commands:
+To build hadron, you need to have `gcc` installed on your system. You can build hadron by running the following commands:
 
 ```sh
 git clone https://github.com/webd3vs/hadron.git
@@ -41,18 +49,19 @@ To transcompile to other languages, you can replace c with the target language. 
 ./hadron -l javascript input.hadron -o output.js
 ```
 ## Examples
+_Please note that the syntax may change in the future._
 
 Here is an example of a "Hello, world!" program in hadron:
 
-```py
+```c
 func main() {
-	print("Hello, world!")
+    log("Hello, world!")
 }
 ```
 
 And here is an example of a function that calculates the nth Fibonacci number:
 
-```py
+```c
 func fib(n) {
   if (n < 2) return n;
   else return fib(n-1) + fib(n-2);
@@ -62,7 +71,7 @@ func main() {
 	print(fib(10));
 }
 ```
-**_Please note that the syntax may change in the future._**
+
 
 ## Contributing
 

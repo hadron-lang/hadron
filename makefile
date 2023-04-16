@@ -7,7 +7,7 @@ build:
 check:
 	echo ok
 test:
-	gcc $(CARGS) -lm -lcriterion -o out/test.bin tests/test.c
+	gcc $(CARGS) -lm -o out/test.bin tests/test.c
 	./out/test.bin
 gcc:
 	$(COMPILE)
@@ -19,4 +19,3 @@ debug:
 	gdb -ex=r\ tests/index.hadron -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin
 clean:
 	rm ./hadron
-
