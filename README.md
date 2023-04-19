@@ -4,7 +4,7 @@
     <a href="https://github.com/webd3vs/hadron/issues"><img src="https://img.shields.io/github/issues/webd3vs/hadron?colorA=333&colorB=faa&style=for-the-badge"></a>
     <a href="https://github.com/webd3vs/hadron/contributors"><img src="https://img.shields.io/github/contributors/webd3vs/hadron?colorA=333&colorB=aaf&style=for-the-badge"></a>
 </p>
-<h1 align="center">hadron</h1>
+<h1 align="center">Hadron</h1>
 
 ### *Hello and welcome to Hadron :wave:, an early-stage language development project! We're thrilled that you've stopped by our project and hope you'll consider contributing to help us speed up development.*
 ### *We welcome any ideas, feedback, and contributions from the community. Whether you're a seasoned developer or just starting out, we'd love to hear from you.*
@@ -12,7 +12,7 @@
 
 ---
 
-hadron is a custom programming language written in C. It is designed to be a versatile language that can be transcompiled to other languages or interpreted. It aims to provide a simple and intuitive syntax, while still being powerful and flexible.
+Hadron is a custom programming language written in C. It is designed to be a versatile language that can be transcompiled to other languages or interpreted. It aims to provide a simple and intuitive syntax, while still being powerful and flexible.
 
 ## Planned Features
 
@@ -27,7 +27,7 @@ hadron is a custom programming language written in C. It is designed to be a ver
 
 ## Getting Started
 
-To build hadron, you need to have `gcc` installed on your system. You can build hadron by running the following commands:
+To build Hadron, you need to have `gcc` installed on your system. You can build Hadron by running the following commands:
 
 ```sh
 git clone https://github.com/webd3vs/hadron.git
@@ -54,7 +54,7 @@ To transcompile to other languages, you can replace c with the target language. 
 ## Examples
 _Please note that the syntax may change in the future._
 
-Here is an example of a "Hello, world!" program in hadron:
+Here is an example of a "Hello, world!" program in Hadron:
 
 ```c
 func main() {
@@ -71,15 +71,15 @@ func fib(n) {
 }
 
 func main() {
-	print(fib(10));
+	log(fib(10));
 }
 ```
 
 
 ## Contributing
 
-We welcome contributions to hadron! If you find a bug or have an idea for a new feature, please open an issue on our GitHub repository. If you would like to contribute code, please submit a pull request. Before submitting a pull request, please make sure your code follows our coding style and passes our tests.
+We welcome contributions to Hadron! If you find a bug or have an idea for a new feature, please open an issue on our GitHub repository. If you would like to contribute code, please submit a pull request. Before submitting a pull request, please make sure your code follows our coding style and passes our tests.
 
 ## License
 
-hadron is released under the MIT License. See LICENSE for details.
+Hadron is released under the MIT License. See LICENSE for details.
