@@ -7,7 +7,7 @@ build:
 check:
 	echo ok
 test:
-	gcc $(CARGS) -lm -o out/test.bin tests/test.c
+	gcc $(CARGS) -lm -o out/test.bin tests/main.c
 	./out/test.bin
 gcc:
 	$(COMPILE)
