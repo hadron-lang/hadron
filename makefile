@@ -13,9 +13,9 @@ gcc:
 	$(COMPILE)
 run:
 	$(COMPILE)
-	./out/debug.bin tests/index.hadron
+	./out/debug.bin .data/index.hadron
 debug:
 	$(COMPILE)
-	gdb -ex=r\ tests/index.hadron -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin
+	gdb -ex=r\ .data/index.hadron -ex=set\ confirm\ off -ex=q --silent ./out/debug.bin
 clean:
 	rm ./hadron

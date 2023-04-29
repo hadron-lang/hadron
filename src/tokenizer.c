@@ -76,7 +76,7 @@ Result *tokenize(string code, string fname) {
 			case ']': pushArray(tokenizer.stack, cloneToken(addToken($BRACKET))); continue;
 			case '{': pushArray(tokenizer.stack, cloneToken(addToken(CURLY))); continue;
 			case '}': pushArray(tokenizer.stack, cloneToken(addToken($CURLY))); continue;
-			case '\n': continue;
+            case '\n': continue;
 			case ' ': case '\t': continue;
 			case '+': {
 				if (match('=')) addToken(ADD_EQ);
@@ -149,7 +149,7 @@ Result *tokenize(string code, string fname) {
 				bool err = false;
 				while (peekNext() != '"') {
 					if (peekNext() == '\n') { err = true; break; }
-					if (current() == '\\') next();
+					if (peekNext() == '\\') next();
 					next();
 				}; if (err) pushArray(tokenizer.errors, error(
 					"Syntax", fname, "unterminated string", addToken(STR)
@@ -224,7 +224,8 @@ Result *tokenize(string code, string fname) {
 	trimArray(tokenizer.tokens);
 	result->errors = tokenizer.errors;
 	result->data   = tokenizer.tokens;
-	return result;
+	printTokens(tokenizer.code, tokenizer.tokens);
+    return result;
 }
 
 void runDistanceCheck(Array *r) {
