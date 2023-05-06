@@ -5,14 +5,14 @@ CLIError *clierror(int argc, ...) {
 	va_list v0;
 	va_list v1;
 	va_start(v0, argc);
-	for (small i = 1; i <= argc; i++) {
-		s += strlen(va_arg(v0, string));
+	for (int i = 1; i <= argc; i++) {
+		s += strlen(va_arg(v0, char *));
 	}; va_end(v0);
-	string e = malloc(s+1);
+	char *e = malloc(s+1);
 	strcpy(e, "");
 	va_start(v1, argc);
-	for (small i = 1; i <= argc; i++) {
-		strcat(e, va_arg(v1, string));
+	for (int i = 1; i <= argc; i++) {
+		strcat(e, va_arg(v1, char *));
 	}; va_end(v1);
 	CLIError *err = malloc(sizeof(CLIError));
 	err->type = CLIERROR;
@@ -20,9 +20,9 @@ CLIError *clierror(int argc, ...) {
 	return err;
 }
 
-Error *error(string name, string file, string data, Token *token) {
+Error *error(char *name, char *file, char *data, Token *token) {
 	Error *err = malloc(sizeof(Error));
-	string n = malloc(strlen("Error") + strlen(name) + 1);
+	char *n = malloc(strlen("Error") + strlen(name) + 1);
 	strcpy(n, name);
 	strcat(n, "Error");
 	err->type = ERROR;

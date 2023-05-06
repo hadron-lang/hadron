@@ -2,11 +2,11 @@
 #include <math.h>
 
 static void util_typelog(Typed *);
-static void util_log(Typed *, small, small);
-static void repeat(string, int);
-static void tab(small);
+static void util_log(Typed *, int, int);
+static void repeat(char *, int);
+static void tab(int);
 
-void repeat(string c, int count) {
+void repeat(char *c, int count) {
 	for (int i = 0; i < count; i++) printf("%s", c);
 }
 int intl(int x) {
@@ -37,11 +37,11 @@ char *getBinaryOperator(BinaryOperator oper) {
 }
 
 void printToken(Token* t) {
-	string key0 = "\x1b[94m";
-	string key1 = "\x1b[96m";
-	string value = "\x1b[93m";
-	string clear = "\x1b[0m";
-	string italic = "\x1b[3m";
+	char *key0 = "\x1b[94m";
+	char *key1 = "\x1b[96m";
+	char *value = "\x1b[93m";
+	char *clear = "\x1b[0m";
+	char *italic = "\x1b[3m";
 	printf("%s\x1b[37mToken%s ", italic, clear);
 	printf("{ %stype%s: ", key0, clear);
 	printf("%s%i%s, %spos%s: { %sline%s: ", value, t->type, clear, key0, clear, key1, clear);
@@ -52,7 +52,7 @@ void printToken(Token* t) {
 	printf("%s%i%s }\n", value, t->pos.absEnd, clear);
 }
 
-void printTokens(string code, Array *tokens) {
+void printTokens(char *code, Array *tokens) {
 	int align[8] = { 0, 0, 0, 0, 0, 0, 0, 10 };
 	for (int i = 0; i < tokens->l; i++) {
 		Token *t = (Token *)tokens->a[i];
@@ -74,16 +74,16 @@ void printTokens(string code, Array *tokens) {
 	for (int i = 0; i < tokens->l; i++) {
 		Token *t = (Token*)tokens->a[i];
 		int len = t->pos.absEnd - t->pos.absStart;
-		string substr = malloc(len);
+		char *substr = malloc(len);
 		memcpy(substr, code+t->pos.absStart, len);
 		substr[len] = 0;
 		int rlen = utflen(substr);
-		string key0 = "\x1b[94m";
-		string key1 = "\x1b[96m";
-		string value = "\x1b[93m";
-		string clear = "\x1b[0m";
-		string token = "\x1b[92m";
-		string italic = "\x1b[3m";
+		char *key0 = "\x1b[94m";
+		char *key1 = "\x1b[96m";
+		char *value = "\x1b[93m";
+		char *clear = "\x1b[0m";
+		char *token = "\x1b[92m";
+		char *italic = "\x1b[3m";
 		if (rlen > align[7]) {
 			free(substr);
 			substr = utfsubstr(code, t->pos.absStart, align[7]-3);
@@ -116,19 +116,25 @@ void printTokens(string code, Array *tokens) {
 void util_typelog(Typed *v) {
 	switch (v->type) {
 		case PROGRAM:
-			printf("\x1b[95m[Program]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			printf("\x1b[95mProgram\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case IMPORT_DECLARATION:
-			printf("\x1b[95m[ImportDeclaration]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			printf("\x1b[95mImportDeclaration\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case IMPORT_SPECIFIER:
-			printf("\x1b[95m[ImportSpecifier]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			printf("\x1b[95mImportSpecifier\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case ASSIGNMENT_EXPRESSION:
-			printf("\x1b[95m[AssignmentExpression]\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			printf("\x1b[95mAssignmentExpression\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			break;
+		case EXPRESSION_STATEMENT:
+			printf("\x1b[95mExpressionStatement\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		case LITERAL:
 			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value);
+			break;
+		case CALL_EXPRESSION:
+			printf("\x1b[95mCallExpression\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
 		default: break;
 	}
@@ -152,16 +158,16 @@ void util_linelog(Typed *v) {
 	}
 }
 
-void tab(small indent) {
-	for (small i = 0; i < indent; i++) {
+void tab(int indent) {
+	for (int i = 0; i < indent; i++) {
 		// printf("%s  ", i%2 ? "" : "");
 		printf("\x1b[30m  \x1b[0m");
 	}
 }
 
-void util_log(Typed *v, small indent, small depth) {
+void util_log(Typed *v, int indent, int depth) {
 	if (indent == depth) {
-		tab(indent);
+		// tab(indent);
 		util_typelog(v);
 		return;
 	}
@@ -170,7 +176,9 @@ void util_log(Typed *v, small indent, small depth) {
 		case EXPRESSION_STATEMENT: {
 			printf("\x1b[95mExpressionStatement\x1b[0m {\n");
 			ExpressionStatement *expr = (ExpressionStatement *)v;
+			tab(indent+1);
 			util_log(expr->expr, indent+1, depth);
+			tab(indent); printf("}\n");
 			break;
 		}
 		case CALL_EXPRESSION: {
@@ -189,7 +197,7 @@ void util_log(Typed *v, small indent, small depth) {
 		case BINARY_EXPRESSION: {
 			BinaryExpression *expr = (BinaryExpression *)v;
 			printf("\x1b[95mBinaryExpression\x1b[0m<\x1b[92m%s\x1b[0m> {\n",
-				getBinaryOperator(expr->operator));
+				getBinaryOperator(expr->oper));
 			tab(indent+1);
 			printf("\x1b[96mleft\x1b[0m: ");
 			util_log((Typed *)expr->left, indent+1, depth);
@@ -276,20 +284,20 @@ void util_log(Typed *v, small indent, small depth) {
 	}
 }
 
-void printAST(Program *p, small depth) {
+void printAST(Program *p, int depth) {
 	util_log((Typed *)p, 0, depth);
 	printf("\n");
 }
 
 void codeError(Error *e) {
-	string white = "\x1b[90m";
-	string red = "\x1b[91m";
-	string yellow = "\x1b[93m";
-	string blue = "\x1b[94;3m";
-	string clear = "\x1b[0m";
-	string bold = "\x1b[1m";
+	char *white = "\x1b[90m";
+	char *red = "\x1b[91m";
+	char *yellow = "\x1b[93m";
+	char *blue = "\x1b[94;3m";
+	char *clear = "\x1b[0m";
+	char *bold = "\x1b[1m";
 	FILE *fp = fopen(e->file, "r");
-	string line = NULL;
+	char *line = NULL;
 	size_t len = 0;
 	size_t read = 0;
 	int l = 0;
@@ -331,9 +339,9 @@ void codeError(Error *e) {
 				e->token->pos.absEnd - e->token->pos.absStart,
 				strlen(line)-e->token->pos.end
 			};
-			string start = substr(line, 0, lens[0]);
-			string error = substr(line, lens[0], lens[1]);
-			string end = substr(line, lens[0]+lens[1], lens[2]);
+			char *start = substr(line, 0, lens[0]);
+			char *error = substr(line, lens[0], lens[1]);
+			char *end = substr(line, lens[0]+lens[1], lens[2]);
 			printf("%s ", white);
 			repeat(" ", lnl - intl(l));
 			printf("%i │%s %s%s%s%s%s\n", l, clear, start, red, error, clear, end);
@@ -368,4 +376,12 @@ void printErrors(Array *array) {
 			}
 		}
 	}
+}
+
+void debug_log(char *function_name, char *code, Token *token) {
+	printf("\x1b[96m%11s\x1b[0m: entering function with token \x1b[92m%5s\x1b[0m type \x1b[93m%2i\x1b[0m\n",
+		function_name,
+		getTokenContent(code, token),
+		token->type
+	);
 }

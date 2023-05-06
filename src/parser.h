@@ -6,6 +6,6 @@
 #include "util/str.h"
 #include "util/print.h"
 
-extern Result *parse(string, Array *, string);
+extern Result *parse(char *, Array *, char *);
 
 #endif

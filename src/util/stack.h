@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+// declare strdup for C99 compatibility
+char *strdup(const char *s);
+
 extern void stack_init(void);
 extern void stack_push(char *name);
 extern void stack_pop(void);

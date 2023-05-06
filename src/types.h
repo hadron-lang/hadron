@@ -5,15 +5,13 @@
 #include <string.h>
 #include "util/array.h"
 
-typedef unsigned char small;
-typedef unsigned char bool;
-typedef char *string;
+typedef unsigned char boolean;
 
-#define true (bool)1
-#define false (bool)0
+#define true (boolean)1
+#define false (boolean)0
 
 typedef struct Value {
-	bool error;
+	boolean error;
 	void *value;
 } Value;
 
@@ -75,12 +73,12 @@ typedef enum __attribute__((__packed__)) Types {
 	AT,       //* @
 	HASH,     //* #
 	QUERY,    //* ?
-	BRACKET,  //* [
-	$BRACKET, //* ]
-	PAREN,    //* (
-	$PAREN,   //* )
-	CURLY,    //* {
-	$CURLY   ,//* }
+	LBRACKET, //* [
+	RBRACKET, //* ]
+	LPAREN,   //* (
+	RPAREN,   //* )
+	LCURLY,   //* {
+	RCURLY,   //* }
 	HEX,      //* 0xff
 	OCTAL,    //* 0o77
 	BIN,      //* 0b1111
@@ -141,23 +139,23 @@ typedef struct Typed {
 
 typedef struct Identifier { // extends Typed
 	AST_Type type;
-	string name;
+	char *name;
 } Identifier;
 
 typedef struct TypedIdentifier { // extends Typed
 	AST_Type type;
-	string name;
-	string kind;
+	char *name;
+	char *kind;
 } TypedIdentifier;
 
 typedef struct Literal { // extends Typed
 	AST_Type type;
-	string value;
+	char *value;
 } Literal;
 
 typedef struct StringLiteral { // extends Typed
 	AST_Type type;
-	string value;
+	char *value;
 } StringLiteral;
 
 typedef struct Program { // extends Typed
@@ -178,7 +176,7 @@ typedef struct ImportDeclaration { // extends Typed
 } ImportDeclaration;
 
 typedef struct FunctionDeclaration {
-	bool async;
+	boolean async;
 	AST_Type type;
 	Identifier *name;
 	Array *params;
@@ -220,9 +218,9 @@ typedef enum BinaryAssignmentOperators {
 
 typedef struct AssignmentExpression { // extends Typed
 	AST_Type type;
+	BinaryAssignmentOperator oper;
 	Typed *left;
 	Typed *right;
-	BinaryAssignmentOperator operator;
 } AssignmentExpression;
 
 typedef enum BinaryOperators {
@@ -238,9 +236,9 @@ typedef enum BinaryOperators {
 
 typedef struct BinaryExpression {
 	AST_Type type;
+	BinaryOperator oper;
 	Typed *left;
 	Typed *right;
-	BinaryOperator operator;
 } BinaryExpression;
 
 typedef struct Result {
@@ -248,18 +246,18 @@ typedef struct Result {
 	void *data;
 } Result;
 
-extern string getTokenContent(string code, Token*);
+extern char *getTokenContent(char *code, Token*);
 extern void freeProgram(Program *);
 extern Program *initProgram(int);
-extern FunctionDeclaration *initFunctionDeclaration(bool async, Identifier *name, Array *params, Array *body);
+extern FunctionDeclaration *initFunctionDeclaration(boolean async, Identifier *name, Array *params, Array *body);
 extern ClassDeclaration *initClassDeclaration(Identifier *name, Array *body);
 extern ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local_name);
 extern ImportDeclaration *initImportDeclaration(StringLiteral *, Array *import_specifier_array);
 extern AssignmentExpression *initAssignmentExpression(Typed *left, Typed *right);
-extern Literal *initLiteral(string value);
-extern StringLiteral *initStringLiteral(string value);
-extern Identifier *initIdentifier(string name);
-extern TypedIdentifier *initTypedIdentifier(string name, string kind);
+extern Literal *initLiteral(char *value);
+extern StringLiteral *initStringLiteral(char *value);
+extern Identifier *initIdentifier(char *name);
+extern TypedIdentifier *initTypedIdentifier(char *name, char *kind);
 extern CallExpression *initCallExpression(Identifier *callee, Array *params);
 extern BinaryExpression *initBinaryExpression(BinaryOperator oper, Typed *left, Typed *right);
 extern ExpressionStatement *initExpressionStatement(Typed *expr);

@@ -1,9 +1,9 @@
 #include "types.h"
 
-string getTokenContent(string src, Token *t) {
-	bool str = t->type == STR;
+char *getTokenContent(char *src, Token *t) {
+	boolean str = t->type == STR;
 	int l = t->pos.absEnd - t->pos.absStart - (str ? 2 : 0);
-	string sub = (string)malloc(l+1);
+	char * sub = (char *)malloc(l+1);
 	memcpy(sub, src+t->pos.absStart + (str ? 1 : 0), l);
 	sub[l] = 0;
 	return sub;
@@ -59,25 +59,25 @@ AssignmentExpression *initAssignmentExpression(Typed *l, Typed *r) {
 	asgn->right = r;
 	return asgn;
 }
-Literal *initLiteral(string v) {
+Literal *initLiteral(char *v) {
 	Literal *ltr = malloc(sizeof(Literal));
 	ltr->type = LITERAL;
 	ltr->value = v;
 	return ltr;
 }
-StringLiteral *initStringLiteral(string v) {
+StringLiteral *initStringLiteral(char *v) {
 	StringLiteral *ltr = malloc(sizeof(StringLiteral));
 	ltr->type = STRING_LITERAL;
 	ltr->value = v;
 	return ltr;
 }
-Identifier *initIdentifier(string n) {
+Identifier *initIdentifier(char *n) {
 	Identifier *id = malloc(sizeof(Identifier));
 	id->type = IDENTIFIER;
 	id->name = n;
 	return id;
 }
-TypedIdentifier *initTypedIdentifier(string n, string k) {
+TypedIdentifier *initTypedIdentifier(char *n, char *k) {
 	TypedIdentifier *id = malloc(sizeof(TypedIdentifier));
 	id->type = IDENTIFIER;
 	id->name = n;
@@ -85,7 +85,7 @@ TypedIdentifier *initTypedIdentifier(string n, string k) {
 	return id;
 
 }
-FunctionDeclaration *initFunctionDeclaration(bool a, Identifier *n, Array *p, Array *b) {
+FunctionDeclaration *initFunctionDeclaration(boolean a, Identifier *n, Array *p, Array *b) {
 	FunctionDeclaration *decl = malloc(sizeof(FunctionDeclaration));
 	decl->type = FUNCTION_DECLARATION;
 	decl->async = a;
@@ -108,12 +108,13 @@ BinaryExpression *initBinaryExpression(BinaryOperator o, Typed *l, Typed *r) {
 	expr->type = BINARY_EXPRESSION;
 	expr->left = l;
 	expr->right = r;
-	expr->operator = o;
+	expr->oper = o;
 	return expr;
 }
 
 ExpressionStatement *initExpressionStatement(Typed *e) {
 	ExpressionStatement *stmt = malloc(sizeof(ExpressionStatement));
+	stmt->type = EXPRESSION_STATEMENT;
 	stmt->expr = e;
 	return stmt;
 }

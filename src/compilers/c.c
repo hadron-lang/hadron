@@ -1,12 +1,12 @@
 #include "c.h"
 
-static void compile(Typed *v, small indent, FILE *fp);
+static void compile(Typed *v, int indent, FILE *fp);
 static void root_compile(Program *p, FILE *fp);
-static void tab(small i, FILE *fp);
+static void tab(int i, FILE *fp);
 static char *getBinaryOperator(BinaryOperator);
 
-void tab(small i, FILE *fp) {
-	for (small j = 0; j < i; j++) {
+void tab(int i, FILE *fp) {
+	for (int j = 0; j < i; j++) {
 		fputs("\t", fp);
 	}
 }
@@ -30,14 +30,14 @@ char *getBinaryOperator(BinaryOperator oper) {
 	}
 }
 
-void compile(Typed *v, small indent, FILE *fp) {
+void compile(Typed *v, int indent, FILE *fp) {
 	switch(v->type) {
 		case BINARY_EXPRESSION: {
 			BinaryExpression *expr = (BinaryExpression *)v;
 			// tab(indent);
 			compile((Typed *)expr->left, indent+1, fp);
 			fputc(' ', fp);
-			fputs(getBinaryOperator(expr->operator), fp);
+			fputs(getBinaryOperator(expr->oper), fp);
 			fputc(' ', fp);
 			compile((Typed *)expr->right, indent+1, fp);
 			// printf(";\n");

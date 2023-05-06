@@ -1,24 +1,24 @@
 #include "main.h"
 
-static bool check(Array *, bool);
-static bool isLang(string);
-static bool isFile(string);
-static Lang parseLang(string);
-static void init(int, string *, Array *);
+static boolean check(Array *, boolean);
+static boolean isLang(char *);
+static boolean isFile(char *);
+static Lang parseLang(char *);
+static void init(int, char *[], Array *);
 
 static struct Args {
 	Lang lang;
 	Mode mode;
-	bool set;
-	string file;
+	boolean set;
+	char *file;
 } args;
 
-void init(int argc, string *argv, Array *errs) {
+void init(int argc, char *argv[], Array *errs) {
 	args.lang = L_UNKN;
 	args.mode = INTERPRET;
 	args.set = false;
 	args.file = NULL;
-	for (small i = 1; i < argc; i++) {
+	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--compile") == 0) {
 			if (args.set && args.mode == INTERPRET)
 				pushArray(errs, clierror(3, "\x1b[96m--interpret", " and \x1b[96m--compile", " are mutually exclusive"));
@@ -40,7 +40,7 @@ void init(int argc, string *argv, Array *errs) {
     if (args.mode == INTERPRET && !args.file) pushArray(errs, clierror(1, "REPL interpret mode not available yet"));
 }
 
-int main(int argc, string *argv) {
+int main(int argc, char *argv[]) {
 	Array *errors = newArray(1);
 	init(argc, argv, errors);
 
@@ -48,7 +48,7 @@ int main(int argc, string *argv) {
 
 	FILE *fp = fopen(args.file, "rb");
 	if (fp == NULL) {
-		string e = utfcat("file \x1b[97m", args.file);
+		char *e = utfcat("file \x1b[97m", args.file);
 		pushArray(errors, clierror(2, e, "\x1b[0;91m does not exist"));
 		free(e);
 	}
@@ -58,7 +58,7 @@ int main(int argc, string *argv) {
 	size_t fsize = ftell(fp);
 	rewind(fp);
 
-	string contents = malloc(fsize+1);
+	char *contents = malloc(fsize+1);
 
 	if (contents == NULL) pushArray(errors, clierror(1, "could not allocate enough space for file"));
 	if (check(errors, false)) return -1;
@@ -86,7 +86,7 @@ int main(int argc, string *argv) {
 	free(p);
 }
 
-bool check(Array *errors, bool drop) {
+boolean check(Array *errors, boolean drop) {
 	if (errors->l) {
 		printErrors(errors);
 		if (drop) freeArray(errors);
@@ -95,7 +95,7 @@ bool check(Array *errors, bool drop) {
 	return 0;
 }
 
-bool isLang(string arg) {
+boolean isLang(char *arg) {
 	for (size_t i = 0; i < strlen(arg); i++) {
 		if (
 			!((arg[i] >= 'a' && arg[i] <= 'z')
@@ -106,7 +106,7 @@ bool isLang(string arg) {
 	return true;
 }
 
-bool isFile(string arg) {
+boolean isFile(char *arg) {
 	for (size_t i = 0; i < strlen(arg); i++) {
 		if (!(
 			(arg[i] >= 'a' && arg[i] <= 'z')
@@ -121,7 +121,7 @@ bool isFile(string arg) {
 	return true;
 }
 
-Lang parseLang(string arg) {
+Lang parseLang(char *arg) {
 	if (strcasecmp(arg, "js") == 0 || strcasecmp(arg, "javascript") == 0) {
 		return L_JS;
 	} else if (strcasecmp(arg, "asm") == 0 || strcasecmp(arg, "assembly") == 0) {

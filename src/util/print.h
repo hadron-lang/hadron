@@ -1,3 +1,4 @@
+#include "stack.h"
 #ifndef __LANG_PRINTTOKENS
 #define __LANG_PRINTTOKENS 1
 
@@ -7,12 +8,16 @@
 #include "../types.h"
 #include "array.h"
 #include "../errors.h"
-#include "../tokenizer.h"
 #include "str.h"
 
-extern void printTokens(string file_contents, Array *tokens);
+// declare getline for C99 compatibility
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+
+extern void printTokens(char *file_contents, Array *tokens);
 extern void printToken(Token *t);
-extern void printAST(Program *program, small depth);
+extern void printAST(Program *program, int depth);
 extern void printErrors(Array *);
+
+extern void debug_log(char *function_name, char *code, Token *token);
 
 #endif

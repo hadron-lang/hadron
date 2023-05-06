@@ -9,6 +9,6 @@
 #include "util/str.h"
 #include "util/print.h"
 
-extern Result *tokenize(string, string);
+extern Result *tokenize(char *, char *);
 
 #endif

@@ -23,4 +23,7 @@ typedef enum __attribute__((__packed__))Modes {
 	DEBUG
 } Mode;
 
-extern int main(int, string *);
+// declare strcasecmp for C99 compatibility
+int strcasecmp(const char *s1, const char *s2);
+
+extern int main(int, char *[]);
