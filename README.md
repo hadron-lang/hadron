@@ -57,7 +57,7 @@ _Please note that the syntax may change in the future._
 Here is an example of a "Hello, world!" program in Hadron:
 
 ```c
-func main() {
+func main {
     log("Hello, world!")
 }
 ```
