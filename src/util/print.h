@@ -1,14 +1,15 @@
-#include "stack.h"
 #ifndef __LANG_PRINTTOKENS
 #define __LANG_PRINTTOKENS 1
 
+#include "../errors.h"
+#include "../types.h"
+#include "array.h"
+#include "stack.h"
+#include "str.h"
+#include <math.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "../types.h"
-#include "array.h"
-#include "../errors.h"
-#include "str.h"
 
 // declare getline for C99 compatibility
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);

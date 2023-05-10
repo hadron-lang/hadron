@@ -1,6 +1,0 @@
-#ifndef __HADRON_LIB_STD_db691bba827490891b6d81c660d2e99b
-#define __HADRON_LIB_STD_db691bba827490891b6d81c660d2e99b 1
-
-extern void eeefddfb05b0594dd3a6e5198aa7fa46(int x);
-
-#endif

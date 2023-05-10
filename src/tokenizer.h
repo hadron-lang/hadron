@@ -1,13 +1,12 @@
 #ifndef __LANG_TOKENIZER
 #define __LANG_TOKENIZER 1
 
-#include <string.h>
-#include <math.h>
-
-#include "types.h"
 #include "errors.h"
-#include "util/str.h"
+#include "types.h"
 #include "util/print.h"
+#include "util/str.h"
+#include <math.h>
+#include <string.h>
 
 extern Result *tokenize(char *, char *);
 

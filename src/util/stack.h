@@ -2,9 +2,9 @@
 #define __HADRON_STACK 1
 
 #include <malloc.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 // declare strdup for C99 compatibility
 char *strdup(const char *s);

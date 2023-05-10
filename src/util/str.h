@@ -4,8 +4,8 @@
 #include "../types.h"
 
 extern size_t utflen(char *str);
-extern char *utfsubstr(char *src, int start, int length);
-extern char *utfcat(char *a, char *b);
-extern char *substr(char *src, int start, int length);
+extern char	 *utfsubstr(char *src, int start, int length);
+extern char	 *utfcat(char *a, char *b);
+extern char	 *substr(char *src, int start, int length);
 
 #endif

@@ -58,7 +58,7 @@ Here is an example of a "Hello, world!" program in Hadron:
 
 ```c
 func main {
-    log("Hello, world!")
+	log("Hello, world!")
 }
 ```
 
@@ -66,8 +66,8 @@ And here is an example of a function that calculates the nth Fibonacci number:
 
 ```c
 func fib(n) {
-  if (n < 2) return n;
-  else return fib(n-1) + fib(n-2);
+	if (n < 2) return n;
+	else return fib(n-1) + fib(n-2);
 }
 
 func main() {

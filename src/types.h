@@ -1,45 +1,45 @@
 #ifndef __LANG_TYPES_H
 #define __LANG_TYPES_H 1
 
+#include "util/array.h"
 #include <stdarg.h>
 #include <string.h>
-#include "util/array.h"
 
 typedef unsigned char boolean;
 
-#define true (boolean)1
+#define true  (boolean)1
 #define false (boolean)0
 
 typedef struct Value {
 	boolean error;
-	void *value;
+	void   *value;
 } Value;
 
 typedef enum __attribute__((__packed__)) Types {
 	UNDEF,
 
 	// COMPARE
-	CMP_EQ,  //* ==
-	CMP_GT,  //* >
-	CMP_LT,  //* <
+	CMP_EQ,	 //* ==
+	CMP_GT,	 //* >
+	CMP_LT,	 //* <
 	CMP_NEQ, //* !=
 	CMP_LEQ, //* <=
 	CMP_GEQ, //* >=
 
 	// ASSIGN
-	EQ,        //* =
-	ADD_EQ,    //* +=
-	SUB_EQ,    //* -=
-	MUL_EQ,    //* *=
-	DIV_EQ,    //* /=
-	INCR,      //* ++
-	DECR,      //* --
+	EQ,		   //* =
+	ADD_EQ,	   //* +=
+	SUB_EQ,	   //* -=
+	MUL_EQ,	   //* *=
+	DIV_EQ,	   //* /=
+	INCR,	   //* ++
+	DECR,	   //* --
 	LAND_EQ,   //* &&=
-	LOR_EQ,    //* ||=
+	LOR_EQ,	   //* ||=
 	BAND_EQ,   //* &=
-	BOR_EQ,    //* |=
+	BOR_EQ,	   //* |=
 	BXOR_EQ,   //* ^=
-	REM_EQ,    //* %=
+	REM_EQ,	   //* %=
 	RSHIFT_EQ, //* >>=
 	LSHIFT_EQ, //* <<=
 
@@ -63,44 +63,44 @@ typedef enum __attribute__((__packed__)) Types {
 	RETURN,
 
 	// TYPE
-	STR,      //* "hello world"
-	NAME,     //* var_name
-	DEC,      //* 123
-	DOT,      //* .
-	DELMT,    //* ;
+	STR,	  //* "hello world"
+	NAME,	  //* var_name
+	DEC,	  //* 123
+	DOT,	  //* .
+	DELMT,	  //* ;
 	NEWLINE,  //* \n
-	SEP,      //* ,
-	AT,       //* @
-	HASH,     //* #
-	QUERY,    //* ?
+	SEP,	  //* ,
+	AT,		  //* @
+	HASH,	  //* #
+	QUERY,	  //* ?
 	LBRACKET, //* [
 	RBRACKET, //* ]
-	LPAREN,   //* (
-	RPAREN,   //* )
-	LCURLY,   //* {
-	RCURLY,   //* }
-	HEX,      //* 0xff
-	OCTAL,    //* 0o77
-	BIN,      //* 0b1111
-	COLON,    //* :
-	_EOF,     //* \0
+	LPAREN,	  //* (
+	RPAREN,	  //* )
+	LCURLY,	  //* {
+	RCURLY,	  //* }
+	HEX,	  //* 0xff
+	OCTAL,	  //* 0o77
+	BIN,	  //* 0b1111
+	COLON,	  //* :
+	_EOF,	  //* \0
 
 	// OPERATION
-	ADD,    //* +
-	SUB,    //* -
-	MUL,    //* *
-	DIV,    //* /
-	LAND,   //* &&
-	LOR,    //* ||
-	BAND,   //* &
-	BOR,    //* |
-	BXOR,   //* ^
-	BNOT,   //* ~ (unary)
-	LNOT,   //* ! (unary)
+	ADD,	//* +
+	SUB,	//* -
+	MUL,	//* *
+	DIV,	//* /
+	LAND,	//* &&
+	LOR,	//* ||
+	BAND,	//* &
+	BOR,	//* |
+	BXOR,	//* ^
+	BNOT,	//* ~ (unary)
+	LNOT,	//* ! (unary)
 	LSHIFT, //* <<
 	RSHIFT, //* >>
-	POW,    //* **
-	REM     //* %
+	POW,	//* **
+	REM		//* %
 } Type;
 
 typedef struct Position {
@@ -112,7 +112,7 @@ typedef struct Position {
 } Position;
 
 typedef struct Token {
-	Type type;
+	Type	 type;
 	Position pos;
 } Token;
 
@@ -137,67 +137,67 @@ typedef struct Typed {
 	AST_Type type;
 } Typed;
 
-typedef struct Identifier { // extends Typed
+typedef struct Identifier {
 	AST_Type type;
-	char *name;
+	char	*name;
 } Identifier;
 
-typedef struct TypedIdentifier { // extends Typed
+typedef struct TypedIdentifier {
 	AST_Type type;
-	char *name;
-	char *kind;
+	char	*name;
+	char	*kind;
 } TypedIdentifier;
 
-typedef struct Literal { // extends Typed
+typedef struct Literal {
 	AST_Type type;
-	char *value;
+	char	*value;
 } Literal;
 
-typedef struct StringLiteral { // extends Typed
+typedef struct StringLiteral {
 	AST_Type type;
-	char *value;
+	char	*value;
 } StringLiteral;
 
-typedef struct Program { // extends Typed
+typedef struct Program {
 	AST_Type type;
-	Array *body;
+	Array	*body;
 } Program;
 
-typedef struct ImportSpecifier { // extends Typed
-	AST_Type type;
+typedef struct ImportSpecifier {
+	AST_Type	type;
 	Identifier *name;
 	Identifier *local;
 } ImportSpecifier;
 
-typedef struct ImportDeclaration { // extends Typed
-	AST_Type type;
+typedef struct ImportDeclaration {
+	AST_Type	   type;
 	StringLiteral *source;
-	Array *specifiers;
+	Array		  *specifiers;
 } ImportDeclaration;
 
 typedef struct FunctionDeclaration {
-	boolean async;
-	AST_Type type;
+	boolean		async;
+	AST_Type	type;
 	Identifier *name;
-	Array *params;
-	Array *body;
+	Array	   *params;
+	Array	   *body;
 } FunctionDeclaration;
 
 typedef struct ClassDeclaration {
-	AST_Type type;
+	AST_Type	type;
 	Identifier *name;
-	Array *body;
+	Array	   *body;
 } ClassDeclaration;
 
 typedef struct CallExpression {
-	AST_Type type;
+	AST_Type	type;
 	Identifier *callee;
-	Array *params;
+	Array	   *params;
 } CallExpression;
 
 typedef struct ExpressionStatement {
 	AST_Type type;
-	Typed *expr;
+	Typed	*expr;
 } ExpressionStatement;
 
 typedef enum BinaryAssignmentOperators {
@@ -216,50 +216,61 @@ typedef enum BinaryAssignmentOperators {
 	BIN_ASGN_LSHIFT_EQ
 } BinaryAssignmentOperator;
 
-typedef struct AssignmentExpression { // extends Typed
-	AST_Type type;
+typedef struct AssignmentExpression {
+	AST_Type				 type;
 	BinaryAssignmentOperator oper;
-	Typed *left;
-	Typed *right;
+	Typed					*left;
+	Typed					*right;
 } AssignmentExpression;
 
 typedef enum BinaryOperators {
 	BIN_UNDEF,
-	BIN_ADD, BIN_SUB,
-	BIN_MUL, BIN_DIV,
-	BIN_LAND, BIN_LOR,
-	BIN_BAND, BIN_BOR,
-	BIN_BXOR, BIN_REM,
-	BIN_RSHIFT, BIN_LSHIFT,
+	BIN_ADD,
+	BIN_SUB,
+	BIN_MUL,
+	BIN_DIV,
+	BIN_LAND,
+	BIN_LOR,
+	BIN_BAND,
+	BIN_BOR,
+	BIN_BXOR,
+	BIN_REM,
+	BIN_RSHIFT,
+	BIN_LSHIFT,
 	BIN_POW
 } BinaryOperator;
 
 typedef struct BinaryExpression {
-	AST_Type type;
+	AST_Type	   type;
 	BinaryOperator oper;
-	Typed *left;
-	Typed *right;
+	Typed		  *left;
+	Typed		  *right;
 } BinaryExpression;
 
 typedef struct Result {
 	Array *errors;
-	void *data;
+	void  *data;
 } Result;
 
-extern char *getTokenContent(char *code, Token*);
-extern void freeProgram(Program *);
-extern Program *initProgram(int);
-extern FunctionDeclaration *initFunctionDeclaration(boolean async, Identifier *name, Array *params, Array *body);
+extern char				   *getTokenContent(char *code, Token *);
+extern void					freeProgram(Program *);
+extern Program			   *initProgram(int);
+extern FunctionDeclaration *initFunctionDeclaration(
+	boolean async, Identifier *name, Array *params, Array *body);
 extern ClassDeclaration *initClassDeclaration(Identifier *name, Array *body);
-extern ImportSpecifier *initImportSpecifier(Identifier *name, Identifier *local_name);
-extern ImportDeclaration *initImportDeclaration(StringLiteral *, Array *import_specifier_array);
-extern AssignmentExpression *initAssignmentExpression(Typed *left, Typed *right);
-extern Literal *initLiteral(char *value);
-extern StringLiteral *initStringLiteral(char *value);
-extern Identifier *initIdentifier(char *name);
-extern TypedIdentifier *initTypedIdentifier(char *name, char *kind);
-extern CallExpression *initCallExpression(Identifier *callee, Array *params);
-extern BinaryExpression *initBinaryExpression(BinaryOperator oper, Typed *left, Typed *right);
+extern ImportSpecifier	*initImportSpecifier(
+	 Identifier *name, Identifier *local_name);
+extern ImportDeclaration *initImportDeclaration(
+	StringLiteral *, Array *import_specifier_array);
+extern AssignmentExpression *initAssignmentExpression(
+	Typed *left, Typed *right);
+extern Literal			*initLiteral(char *value);
+extern StringLiteral	*initStringLiteral(char *value);
+extern Identifier		*initIdentifier(char *name);
+extern TypedIdentifier	*initTypedIdentifier(char *name, char *kind);
+extern CallExpression	*initCallExpression(Identifier *callee, Array *params);
+extern BinaryExpression *initBinaryExpression(
+	BinaryOperator oper, Typed *left, Typed *right);
 extern ExpressionStatement *initExpressionStatement(Typed *expr);
 
 #endif
