@@ -7,6 +7,9 @@
 #include <stdio.h>
 
 static void	   initParser(char *, Array *, char *);
+static void    synchronize();
+// go to nearest delimiter or newline
+static void    psync();
 static boolean end(void);
 static boolean start(void);
 static Token  *next(void);
@@ -76,7 +79,7 @@ Value *fmatch(Type t, char *e) {
 	} else {
 		r->error = true;
 		r->value = error("Parse", parser.file, e, next());
-	};
+	}
 	return r;
 }
 
@@ -145,10 +148,17 @@ boolean check(Value *r) {
 
 void delmt(boolean throw) {
 	match(DELMT);
-	if (throw &&current() && peekNext() &&
+	if (throw && current() && peekNext() &&
 		(current()->pos.line == peekNext()->pos.line))
 		pushArray(parser.errors,
 			error("Parse", parser.file, "expected delimiter", current()));
+}
+
+void psync() {
+	debug_log("psync", parser.code, peekNext());
+	while (!end() && (current()->type != DELMT && current()->pos.line == peekNext()->pos.line)) {
+		next();
+	}
 }
 
 Value *parseClassDeclaration() {
@@ -193,9 +203,12 @@ Value *funcParams() {
 Value *funcBody() {
 	Array *a = newArray(2);
 	while (!match(RCURLY)) {
-		Value *v = parseExpression();
-		if (check(v)) return freeArray(a), freeValue(v);
-		pushArray(a, v->value);
+		Value *v = parseStatement();
+		if (check(v)) {
+			psync();
+			freeValue(v);
+		// if (check(v)) return freeArray(a), freeValue(v);
+		} else pushArray(a, v->value);
 	};
 	trimArray(a);
 	return toValue(a);
@@ -243,6 +256,7 @@ Value *parseAssignmentExpression(Value *t) {
 }
 
 Value *parseIdentifier(Value *t) {
+	debug_log("iden", parser.code, peekNext());
 	Value *id = fmatch(NAME, "expected identifier");
 	if (check(id)) return freeValue(id), freeValue(t);
 	return toValue(
@@ -254,9 +268,17 @@ Value *parseStringLiteral() {
 	return toValue(initStringLiteral(getTokenContent(parser.code, current())));
 }
 Value *parseLiteral() {
+	debug_log("lit", parser.code, peekNext());
 	if (match(STR)) return parseStringLiteral();
 	if (!matchAny(6, TRUE, FALSE, DEC, HEX, OCTAL, BIN)) return NULL;
-	return toValue(initLiteral(getTokenContent(parser.code, current())));
+	if (matchAny(1, WHILE)) {
+		debug_log("---lit", parser.code, peekNext());
+		Value *v = malloc(sizeof(Value));
+		v->error = true;
+		v->value = error("Parse", parser.file, "unexpected identifier", peekNext());
+		return v;
+	}
+	return toValue(initLiteral(getTokenContent(parser.code, peekNext())));
 }
 Value *varDecl(Value *t) {
 	Value *n = parseIdentifier(t);
@@ -357,8 +379,10 @@ Value *parseExpression() {
 		else if (nextIs(LPAREN))
 			return parseCallExpression(t);
 		// else if (nextIs(DOT)) return chainExpr();
-		else if (nextIs(EQ))
+		else if (matchAny(1, EQ)) {
+			prev();
 			return parseAssignmentExpression(t);
+		}
 		else
 			return prev(), parseIdentifier(t);
 	} else if (matchAny(4, DEC, HEX, OCTAL, BIN)) {
@@ -470,8 +494,10 @@ Value *parseWhileStatement() { return NULL; } // todo
 Value *parseForStatement() { return NULL; } // todo
 
 Value *parseReturnStatement() {
+	debug_log("retstmt", parser.code, peekNext());
 	Value *retval = parseExpression();
-	return retval;
+	if (check(retval)) return NULL;
+	return toValue(initReturnStatement(retval->value));
 } // todo
 
 Value *parseStatement() {

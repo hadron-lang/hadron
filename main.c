@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
 
 	printAST(p->data, 5);
 
+	printf("token count %i\n", ((Array *)t->data)->l);
+
 	free(contents);
 	freeArray(t->data);
 	free(t);

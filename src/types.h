@@ -68,7 +68,7 @@ typedef enum __attribute__((__packed__)) Types {
 	DEC,	  //* 123
 	DOT,	  //* .
 	DELMT,	  //* ;
-	NEWLINE,  //* \n
+	NEWLINE,  //* \n todo remove
 	SEP,	  //* ,
 	AT,		  //* @
 	HASH,	  //* #
@@ -130,7 +130,8 @@ typedef enum __attribute__((__packed__)) AST_Types {
 	STRING_LITERAL,
 	IDENTIFIER,
 	TYPED_IDENTIFIER,
-	EXPRESSION_STATEMENT
+	EXPRESSION_STATEMENT,
+	RETURN_STATEMENT
 } AST_Type;
 
 typedef struct Typed {
@@ -199,6 +200,11 @@ typedef struct ExpressionStatement {
 	AST_Type type;
 	Typed	*expr;
 } ExpressionStatement;
+
+typedef struct ReturnStatement {
+	AST_Type type;
+	Typed *expr;
+} ReturnStatement;
 
 typedef enum BinaryAssignmentOperators {
 	BIN_ASGN_EQ = 1,
@@ -272,5 +278,6 @@ extern CallExpression	*initCallExpression(Identifier *callee, Array *params);
 extern BinaryExpression *initBinaryExpression(
 	BinaryOperator oper, Typed *left, Typed *right);
 extern ExpressionStatement *initExpressionStatement(Typed *expr);
+extern ReturnStatement     *initReturnStatement(Typed *expr);
 
 #endif

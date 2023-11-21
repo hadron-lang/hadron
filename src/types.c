@@ -131,3 +131,10 @@ ExpressionStatement *initExpressionStatement(Typed *e) {
 	stmt->expr				  = e;
 	return stmt;
 }
+
+ReturnStatement *initReturnStatement(Typed *e) {
+	ReturnStatement *stmt = malloc(sizeof(ReturnStatement));
+	stmt->type            = RETURN_STATEMENT;
+	stmt->expr            = e;
+	return stmt;
+}

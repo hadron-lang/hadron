@@ -152,6 +152,10 @@ void util_typelog(Typed *v) {
 			printf(
 				"\x1b[95mExpressionStatement\x1b[0m { \x1b[94m...\x1b[0m }\n");
 			break;
+		case RETURN_STATEMENT:
+			printf(
+				"\x1b[95mReturnStatement\x1b[0m { \x1b[94m...\x1b[0m }\n");
+			break;
 		case LITERAL:
 			printf("\x1b[93m%s\x1b[0m\n", ((Literal *)v)->value);
 			break;
@@ -208,9 +212,18 @@ void util_log(Typed *v, int indent, int depth) {
 	switch (v->type) {
 		case EXPRESSION_STATEMENT: {
 			printf("\x1b[95mExpressionStatement\x1b[0m {\n");
-			ExpressionStatement *expr = (ExpressionStatement *)v;
+			ExpressionStatement *stmt = (ExpressionStatement *)v;
 			tab(indent + 1);
-			util_log(expr->expr, indent + 1, depth);
+			util_log(stmt->expr, indent + 1, depth);
+			tab(indent);
+			printf("}\n");
+			break;
+		}
+		case RETURN_STATEMENT: {
+			printf("\x1b[95mReturnStatement\x1b[0m {\n");
+			ReturnStatement *stmt = (ReturnStatement *)v;
+			tab(indent + 1);
+			util_log(stmt->expr, indent + 1, depth);
 			tab(indent);
 			printf("}\n");
 			break;
