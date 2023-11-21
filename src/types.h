@@ -176,8 +176,8 @@ typedef struct ImportDeclaration {
 } ImportDeclaration;
 
 typedef struct FunctionDeclaration {
-	boolean		async;
 	AST_Type	type;
+	boolean		async;
 	Identifier *name;
 	Array	   *params;
 	Array	   *body;

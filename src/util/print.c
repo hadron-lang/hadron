@@ -193,7 +193,8 @@ void util_linelog(Typed *v) {
 void tab(int indent) {
 	for (int i = 0; i < indent; i++) {
 		// printf("%s  ", i%2 ? "" : "");
-		printf("\x1b[30m  \x1b[0m");
+		// printf("\x1b[30m  \x1b[0m");
+		printf("\x1b[30m│  \x1b[0m");
 	}
 }
 
