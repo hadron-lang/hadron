@@ -247,12 +247,13 @@ Value *parseAssignmentExpression(Value *t) {
 	prev();
 	Value *n = parseIdentifier(t);
 	if (check(n)) return freeValue(t), freeValue(n);
-	Value *q = fmatch(EQ, "expected =");
-	if (check(q)) return freeValue(t), freeValue(n), freeValue(q);
+	// Value *q = fmatch(EQ, "expected =");
+	next(); // consume operator
+	// if (check(q)) return freeValue(t), freeValue(n), freeValue(q);
 	Value *r = parseExpression();
-	if (check(r)) return freeValue(t), freeValue(n), freeValue(q), freeValue(r);
+	if (check(r)) return freeValue(t), freeValue(n), freeValue(r);
 	match(DELMT);
-	return toValue(initAssignmentExpression(n->value, r->value));
+	return toValue(initAssignmentExpression(n->value, r->value, 0));
 }
 
 Value *parseIdentifier(Value *t) {
@@ -270,14 +271,14 @@ Value *parseStringLiteral() {
 Value *parseLiteral() {
 	debug_log("lit", parser.code, peekNext());
 	if (match(STR)) return parseStringLiteral();
-	if (!matchAny(6, TRUE, FALSE, DEC, HEX, OCTAL, BIN)) return NULL;
-	if (matchAny(1, WHILE)) {
+	if (matchAny(14, FOR, CLASS, FUNC, WHILE, IF, DO, ELSE, FROM, IMPORT, NEW, AWAIT, AS, ASYNC, RETURN)) {
 		debug_log("---lit", parser.code, peekNext());
 		Value *v = malloc(sizeof(Value));
 		v->error = true;
-		v->value = error("Parse", parser.file, "unexpected identifier", peekNext());
+		v->value = error("Parse", parser.file, "unexpected keyword", current());
 		return v;
 	}
+	if (!matchAny(6, TRUE, FALSE, DEC, HEX, OCTAL, BIN)) return NULL;
 	return toValue(initLiteral(getTokenContent(parser.code, peekNext())));
 }
 Value *varDecl(Value *t) {
@@ -288,7 +289,7 @@ Value *varDecl(Value *t) {
 	Value *r = parseExpression();
 	if (check(r)) return freeValue(t), freeValue(n), freeValue(q), freeValue(r);
 	match(DELMT);
-	return toValue(initAssignmentExpression(n->value, r->value));
+	return toValue(initAssignmentExpression(n->value, r->value, ASGN_EQ));
 }
 
 //* working as expected
@@ -379,12 +380,12 @@ Value *parseExpression() {
 		else if (nextIs(LPAREN))
 			return parseCallExpression(t);
 		// else if (nextIs(DOT)) return chainExpr();
-		else if (matchAny(1, EQ)) {
+		else if (matchAny(3, EQ, ADD_EQ, SUB_EQ)) {
 			prev();
 			return parseAssignmentExpression(t);
 		}
 		else
-			return prev(), parseIdentifier(t);
+			return parseIdentifier(t);
 	} else if (matchAny(4, DEC, HEX, OCTAL, BIN)) {
 		Value *l = toValue(current());
 		if (matchAny(13, ADD, SUB, MUL, DIV, LAND, LOR, BAND, BOR, BXOR, REM,

@@ -60,11 +60,12 @@ ClassDeclaration *initClassDeclaration(Identifier *n, Array *b) {
 	return decl;
 }
 
-AssignmentExpression *initAssignmentExpression(Typed *l, Typed *r) {
+AssignmentExpression *initAssignmentExpression(Typed *l, Typed *r, AssignmentOperator oper) {
 	AssignmentExpression *asgn = malloc(sizeof(AssignmentExpression));
 	asgn->type				   = ASSIGNMENT_EXPRESSION;
 	asgn->left				   = l;
 	asgn->right				   = r;
+	asgn->oper                 = oper;
 	return asgn;
 }
 

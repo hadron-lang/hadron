@@ -206,25 +206,25 @@ typedef struct ReturnStatement {
 	Typed *expr;
 } ReturnStatement;
 
-typedef enum BinaryAssignmentOperators {
-	BIN_ASGN_EQ = 1,
-	BIN_ASGN_ADD_EQ,
-	BIN_ASGN_SUB_EQ,
-	BIN_ASGN_MUL_EQ,
-	BIN_ASGN_DIV_EQ,
-	BIN_ASGN_LAND_EQ,
-	BIN_ASGN_LOR_EQ,
-	BIN_ASGN_BAND_EQ,
-	BIN_ASGN_BOR_EQ,
-	BIN_ASGN_BXOR_EQ,
-	BIN_ASGN_REM_EQ,
-	BIN_ASGN_RSHIFT_EQ,
-	BIN_ASGN_LSHIFT_EQ
-} BinaryAssignmentOperator;
+typedef enum AssignmentOperators {
+	ASGN_EQ = 1,
+	ASGN_ADD_EQ,
+	ASGN_SUB_EQ,
+	ASGN_MUL_EQ,
+	ASGN_DIV_EQ,
+	ASGN_LAND_EQ,
+	ASGN_LOR_EQ,
+	ASGN_BAND_EQ,
+	ASGN_BOR_EQ,
+	ASGN_BXOR_EQ,
+	ASGN_REM_EQ,
+	ASGN_RSHIFT_EQ,
+	ASGN_LSHIFT_EQ
+} AssignmentOperator;
 
 typedef struct AssignmentExpression {
 	AST_Type				 type;
-	BinaryAssignmentOperator oper;
+	AssignmentOperator oper;
 	Typed					*left;
 	Typed					*right;
 } AssignmentExpression;
@@ -269,7 +269,7 @@ extern ImportSpecifier	*initImportSpecifier(
 extern ImportDeclaration *initImportDeclaration(
 	StringLiteral *, Array *import_specifier_array);
 extern AssignmentExpression *initAssignmentExpression(
-	Typed *left, Typed *right);
+	Typed *left, Typed *right, AssignmentOperator oper);
 extern Literal			*initLiteral(char *value);
 extern StringLiteral	*initStringLiteral(char *value);
 extern Identifier		*initIdentifier(char *name);
