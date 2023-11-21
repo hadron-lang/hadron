@@ -91,7 +91,7 @@ Identifier *initIdentifier(char *n) {
 
 TypedIdentifier *initTypedIdentifier(char *n, char *k) {
 	TypedIdentifier *id = malloc(sizeof(TypedIdentifier));
-	id->type			= IDENTIFIER;
+	id->type			= TYPED_IDENTIFIER;
 	id->name			= n;
 	id->kind			= k;
 	return id;
