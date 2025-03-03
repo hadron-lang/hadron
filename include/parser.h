@@ -2,8 +2,9 @@
 #define HADRON_PARSER_H 1
 
 #include "lexer.h"
-#include "logger.h"
 #include "symbol.h"
+#include "types.h"
+#include "vm.h"
 
 enum class Precedence : int8_t {
   NUL = -1,
@@ -35,9 +36,9 @@ typedef class Parser {
   SymbolTable symbols;
 
   explicit Parser(Lexer &lexer, Chunk &chunk);
-  void     advance();
-  Token   &consume(Type type, const char *error);
-  bool     match(Type type);
+  void   advance();
+  Token &consume(Type type, const char *error);
+  bool   match(Type type);
 
   void parse();
   void parse_expression(Precedence precedence);
@@ -48,8 +49,8 @@ typedef void (*LedFn)(Parser &, const Token &);
 
 typedef struct ParseRule {
   Precedence precedence;
-  NudFn      nud; // Null denotation function
-  LedFn      led; // Left denotation function
+  NudFn      nud;
+  LedFn      led;
 } ParseRule;
 
 #endif // HADRON_PARSER_H

@@ -22,8 +22,10 @@ InterpretResult VM::interpret(Chunk &chunk) {
         stack[++sp] = *reinterpret_cast<double *>(chunk.code + ip + 2);
         ip += 9;
         break;
-      case OpCodes::RETURN:
+      case OpCodes::PRINT:
         printf("%g\n", stack[sp--]);
+        break;
+      case OpCodes::RETURN:
         return INTERPRET_OK;
       case OpCodes::ADD:
         stack[sp - 1] = stack[sp - 1] + stack[sp];

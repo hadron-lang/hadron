@@ -1,5 +1,6 @@
 #include "logger.h"
 #include "types.h"
+#include "error.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -195,7 +196,7 @@ static bool supportsAnsi() {
     return supported;
   checked = true;
   if (const char *term = secure_getenv("TERM");
-      term && (strstr(term, "xterm") || strstr(term, "color")))
+    term && (strstr(term, "xterm") || strstr(term, "color")))
     supported = true;
   return supported;
 }
@@ -227,6 +228,11 @@ void Logger::fatal(const char *msg) {
   else
     printf("FATAL: %s\n", msg);
   exit(EXIT_FAILURE);
+}
+
+void Logger::fatal(const char *msg, Token *tkn, const char *filename) {
+  Error err = create_error((char *)"Syntax", filename, (char *)msg, tkn);
+  print_error(&err);
 }
 
 void Logger::print_token(const Token &token) {

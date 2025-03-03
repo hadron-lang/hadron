@@ -184,6 +184,7 @@ Token Lexer::emit(const Type type) {
 #define MAX_NUMBER_LENGTH 0x40
       char buffer[MAX_NUMBER_LENGTH];
       input.read_chunk(buffer, token.pos.absStart, MAX_NUMBER_LENGTH);
+      break;
     }
     default:
       had_float = false;

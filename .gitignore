@@ -1,12 +1,10 @@
 .idea/
 .vscode/
 .cache/
-build/
-
-cmake_install.cmake
-compile_commands.json
-Makefile
+cmake-build-debug/
 
 *.hbc
 *.exe
 *.out
+*.o
+*.d

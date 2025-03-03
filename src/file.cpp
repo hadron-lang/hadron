@@ -1,6 +1,5 @@
 #include "file.h"
 #include "logger.h"
-#include "memory.h"
 
 #include <cstring>
 #include <fcntl.h>
@@ -8,8 +7,8 @@
 #include <unistd.h>
 
 static int open_file(const char *file_name, const int flags) {
-  struct stat lstat_info {};
-  struct stat fstat_info {};
+  struct stat lstat_info{};
+  struct stat fstat_info{};
   int         fd;
 
   if (!(flags & O_CREAT)) {
@@ -18,7 +17,7 @@ static int open_file(const char *file_name, const int flags) {
       return -1;
     }
     if (!(S_ISREG(lstat_info.st_mode))) {
-      Logger::fatal("File is not aregular  file");
+      Logger::fatal("File is not a regular file");
       return -1;
     }
   }
@@ -120,7 +119,7 @@ FileResult File::write_flush() {
   if (!fp)
     return FILE_WRITE_FAILURE;
   if (const size_t write_size = fwrite(buffer, sizeof(char), buffer_size, fp);
-      write_size != buffer_size) {
+    write_size != buffer_size) {
     return FILE_WRITE_FAILURE;
   }
   buffer_size = 0;

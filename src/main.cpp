@@ -2,6 +2,7 @@
 #include "file.h"
 #include "lexer.h"
 #include "parser.h"
+#include "logger.h"
 #include "vm.h"
 
 #include <cstring>
@@ -31,7 +32,8 @@ void build_path(const File &file, char *path) {
   file.get_dir(dir);   // No allocations in get_dir
   file.get_name(name); // No allocations in get_name
 
-  snprintf(path, MAX_DIR_LENGTH + MAX_FILENAME_LENGTH, "%s/%s.hbc", dir, name);
+  snprintf(
+    path, MAX_DIR_LENGTH + MAX_FILENAME_LENGTH + 6, "%s/%s.hbc", dir, name);
 }
 
 static void repl() {
@@ -64,16 +66,13 @@ int main(const int argc, char *argv[]) {
 
   init_arguments(&argument_parser, argc, argv);
 
-  if (!argument_parser.positional.size()) {
+  if (argument_parser.positional.empty()) {
     repl();
-  }
-
-  for (const auto &arg : argument_parser.args) {
-    printf("- \"%s\" (-%c): \"%s\"\n", arg.long_name, arg.short_name, arg.value);
   }
 
   for (const auto filename : argument_parser.positional) {
     File  file(filename, FILE_MODE_READ);
+    Input input(file);
     Chunk chunk;
 
     char ext[MAX_EXT_LENGTH];
@@ -102,9 +101,7 @@ int main(const int argc, char *argv[]) {
       continue;
     }
 
-    Input input(file);
     Lexer lexer(input);
-
     Parser parser(lexer, chunk);
 
     parser.parse();

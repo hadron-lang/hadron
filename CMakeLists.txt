@@ -19,8 +19,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
 endif ()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
 
 # Include directories
 include_directories(include)

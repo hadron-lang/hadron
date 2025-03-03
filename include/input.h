@@ -40,6 +40,7 @@ class Input {
   [[nodiscard]] char peek() const;
   [[nodiscard]] char current() const;
   void               read_chunk(char *dest, size_t start, size_t length) const;
+  const char         *get_name() const;
 };
 
 #endif // HADRON_INPUT_H

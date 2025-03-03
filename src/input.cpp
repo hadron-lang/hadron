@@ -1,6 +1,8 @@
 #include "input.h"
 #include "util.h"
 
+#include <cstdlib>
+
 Input::~Input() = default;
 
 char Input::next() {
@@ -29,6 +31,10 @@ char Input::peek() const {
   if (index >= length)
     return '\0';
   return source[index];
+}
+
+const char *Input::get_name() const {
+  return file.file_name;
 }
 
 char Input::current() const { return current_char; }

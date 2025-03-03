@@ -74,8 +74,8 @@ _Please note that the syntax may change in the future._
 Here is an example of a "Hello, world!" program in Hadron:
 
 ```
-fx main {
-  IO:out("Hello, world!")
+fx main() {
+  IO.out("Hello, world!")
 }
 ```
 
@@ -83,12 +83,14 @@ And here is an example of a function that calculates the nth Fibonacci number:
 
 ```
 fx fib(i32 n) {
-  if n < 2 { return n; }
-  else { return fib(n-1) + fib(n-2); }
+  if n < 2 {
+    return n
+  }
+  return fib(n-2) + fib(n-1);
 } i32
 
 fx main() {
-  IO:out(fib(10));
+  IO.out(fib(10));
 }
 ```
 

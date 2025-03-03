@@ -1,4 +1,3 @@
-#include <cwctype>
 #ifndef HADRON_ARGUMENTS_H
 #define HADRON_ARGUMENTS_H 1
 

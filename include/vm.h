@@ -9,6 +9,7 @@
 
 typedef enum class OpCodes : uint8_t {
   RETURN     = 'r',
+  PRINT      = '#',
   MOVE       = 'm',
   ADD        = '+',
   SUB        = '-',

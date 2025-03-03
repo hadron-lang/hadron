@@ -1,0 +1,12 @@
+i32 ft = 42
+
+fx fib(i32 n) {
+  if n < 2 {
+  	return n
+  }
+  return fib(n - 1) + fib(n - 2)
+}
+
+fx main() {
+  IO.out(fib(10))
+}

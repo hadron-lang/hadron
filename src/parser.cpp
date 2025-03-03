@@ -13,7 +13,7 @@ Token &Parser::consume(const Type type, const char *error) {
     advance();
     return prev_token;
   }
-  Logger::fatal(error);
+  Logger::fatal(error, &current_token, lexer.input.get_name());
   return current_token; // never reached
 }
 
@@ -33,18 +33,24 @@ static NudFn parse_fxn = [](Parser &parser, const Token &) {
 
   // TODO: Accept parameters
   parser.consume(Types::L_PAREN, "Expected '(' after function name");
+  while (parser.current_token.type != Types::R_PAREN)
+    parser.advance();
   if (!parser.match(Types::R_PAREN)) {
-    Logger::fatal("Expected ')' after function name");
+    Logger::fatal("Expected ')' after function name", &parser.current_token, parser.lexer.input.get_name());
+    return;
   }
 
   parser.chunk.write(OpCodes::FX_ENTRY);
 
-  // Parse function body
   parser.consume(Types::L_CURLY, "Expected '{' to start function body");
   const size_t start_address = parser.chunk.pos;
-  while (!parser.match(Types::R_CURLY) /* && !parser.is_at_end() */) {
+  while (!parser.match(Types::R_CURLY) && parser.current_token.type != Types::END) {
     parser.parse_expression(Precedence::NUL);
   }
+  if (parser.current_token.type == Types::END)
+    Logger::fatal("Unexpected end of file", &parser.current_token, parser.lexer.input.get_name());
+
+
   // const size_t end_address = parser.chunk.pos;
 
   // Emit bytecode for function definition
@@ -54,7 +60,6 @@ static NudFn parse_fxn = [](Parser &parser, const Token &) {
   // }
   parser.chunk.write(OpCodes::FX_EXIT);
 
-  // Store function metadata in symbol table
   const bool insert_result = parser.symbols.insert(
     name, static_cast<int>(start_address), SymbolType::FUNCTION);
   if (!insert_result)
@@ -185,17 +190,22 @@ static LedFn parse_dcl = [](Parser &parser, const Token &) {
       break;
     }
     default: {
-      printf("%i\n", static_cast<int>(parser.current_token.type));
-      Logger::fatal("Unknown declaration");
+      // printf("%i\n", static_cast<int>(parser.current_token.type));
+      // Logger::fatal("Unknown declaration", &parser.current_token, parser.lexer.input.get_name());
     }
   }
+};
+
+static LedFn parse_err = [](Parser &parser, const Token &) {
+  (void)parser;
+  printf("Got error");
 };
 
 #define parse_nul nullptr // for code alignment purposes
 #define I         static_cast<int>
 
 static ParseRule rules[I(Types::MAX_TOKENS)] = {
-  [I(Types::ERROR)]      = {Precedence::MAX, parse_nul, parse_nul},
+  [I(Types::ERROR)]      = {Precedence::MAX, parse_err, parse_err},
   [I(Types::CMP_EQ)]     = {Precedence::EQT, parse_nul, parse_nul},
   [I(Types::CMP_NEQ)]    = {Precedence::EQT, parse_nul, parse_nul},
   [I(Types::CMP_GT)]     = {Precedence::CMP, parse_nul, parse_nul},
@@ -294,10 +304,10 @@ void Parser::parse() {
   advance();
   while (current_token.type != Types::END) {
     parse_expression(Precedence::NUL);
-    const bool is_stmt =
-      match(Types::SEMICOLON) || current_token.pos.line != prev_token.pos.line;
-    if (!is_stmt || current_token.type == Types::END)
-      chunk.write(OpCodes::RETURN);
+    // const bool is_stmt =
+    //   match(Types::SEMICOLON) || current_token.pos.line != prev_token.pos.line;
+    // if (!is_stmt || current_token.type == Types::END)
+    //   chunk.write(OpCodes::RETURN);
   }
 }
 
@@ -307,7 +317,7 @@ void Parser::parse_expression(const Precedence precedence) {
 
   ParseRule rule = get_rule(token.type);
   if (!rule.nud) {
-    Logger::fatal("Unexpected token");
+    Logger::fatal("Unexpected token", &current_token, lexer.input.get_name());
   }
 
   rule.nud(*this, token);
@@ -321,7 +331,7 @@ void Parser::parse_expression(const Precedence precedence) {
 
     rule = get_rule(operator_token.type);
     if (!rule.led && same_line) {
-      Logger::fatal("Unexpected operator");
+      Logger::fatal("Unexpected operator", &current_token, lexer.input.get_name());
     } else if (!same_line) {
       return;
     }

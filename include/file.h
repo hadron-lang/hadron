@@ -3,10 +3,12 @@
 
 #define CHUNK_SIZE 1024
 
-#include "logger.h"
 #include "util.h"
+#include "logger.h"
 
+#include <cstdint>
 #include <cstdio>
+#include <type_traits>
 
 typedef enum __attribute__((__packed__)) FileMode {
   FILE_MODE_NONE,
@@ -35,9 +37,10 @@ typedef struct FileHeader {
 
 class File {
   uint8_t buffer[CHUNK_SIZE]{};
-
+public:
   FILE       *fp{nullptr};
   const char *file_name{nullptr};
+private:
   size_t      file_size{0};
   size_t      buffer_size{0};
   size_t      buffer_pos{0};
@@ -51,8 +54,8 @@ class File {
   [[nodiscard]] uint8_t name_length() const;
 
   public:
-   File() = default;
-   File(const char *file_name, FileMode mode);
+  File() = default;
+  File(const char *file_name, FileMode mode);
   ~File() { close(); }
 
   void get_dir(char *path) const;
@@ -81,7 +84,7 @@ class File {
         }
       }
       if (const size_t write_size = fwrite(value, 1, length, fp);
-          write_size != length) {
+        write_size != length) {
         return FILE_WRITE_FAILURE;
       }
       return FILE_STATUS_OK;
