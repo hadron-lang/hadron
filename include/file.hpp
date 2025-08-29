@@ -3,8 +3,8 @@
 
 #define CHUNK_SIZE 1024
 
-#include "util.h"
-#include "logger.h"
+#include "util.hpp"
+#include "logger.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -98,6 +98,11 @@ private:
       buffer_size += sizeof(value);
       return FILE_STATUS_OK;
     }
+  }
+
+  File &operator<<(Chunk &chunk) {
+    for (uint8_t op : chunk.code) write(op);
+    return *this;
   }
 
   template <typename T> File &operator<<(T value) {

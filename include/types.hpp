@@ -119,6 +119,7 @@ typedef union Any {
   float              f32;
   double             f64;
   void              *ptr;
+  const char        *str;
 } Any;
 
 typedef struct Token {

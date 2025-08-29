@@ -1,10 +1,11 @@
 #ifndef HADRON_PARSER_H
 #define HADRON_PARSER_H 1
 
-#include "lexer.h"
-#include "symbol.h"
-#include "types.h"
-#include "vm.h"
+#include "lexer.hpp"
+#include "symbol.hpp"
+#include "types.hpp"
+#include "vm.hpp"
+
 
 enum class Precedence : int8_t {
   NUL = -1,
@@ -38,7 +39,16 @@ typedef class Parser {
   explicit Parser(Lexer &lexer, Chunk &chunk);
   void   advance();
   Token &consume(Type type, const char *error);
-  bool   match(Type type);
+  bool        match(Type type);
+
+  void parse_fxn(const Token &);
+  void parse_lit(const Token &);
+  void parse_err(const Token &);
+  void parse_unr(const Token &);
+  void parse_bin(const Token &);
+  void parse_grp(const Token &);
+  void parse_rng(const Token &);
+  void parse_dcl(const Token &);
 
   void parse();
   void parse_expression(Precedence precedence);

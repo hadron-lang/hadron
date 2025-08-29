@@ -1,5 +1,5 @@
-#include "input.h"
-#include "util.h"
+#include "input.hpp"
+#include "util.hpp"
 
 #include <cstdlib>
 

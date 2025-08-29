@@ -15,12 +15,12 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Enable static linking and custom flags for Windows release builds
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -static-libgcc -static-libstdc++ -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -static-libgcc -static-libstdc++ -O3 -Wall -Wpedantic -Wno-format-security")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -O3 -Wall -Wpedantic -Wno-format-security")
 endif ()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O3 -Wall -Wextra -Wpedantic -Wno-format-security")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O3 -Wall -Wpedantic -Wno-format-security")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g3 -O3 -Wall -Wpedantic -Wno-format-security")
 
 # Include directories
 include_directories(include)
@@ -32,5 +32,5 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(hadron ${SOURCES})
 
 # Link libraries
-target_link_libraries(hadron m)
+target_link_libraries(hadron m readline)
 

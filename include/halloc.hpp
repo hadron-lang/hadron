@@ -15,10 +15,10 @@ inline void *halloc(const size_t size) {
   if (allocations > MAX_ALLOCATIONS) {
     Logger::fatal("Too many allocations");
   }
-  char message[96];
-  snprintf(message, 96, "Allocating %3lu bytes. Remaining %4lu", size,
-    MAX_ALLOCATIONS - allocations);
-  Logger::warn(message);
+  // char message[96];
+  // snprintf(message, 96, "Allocating %3lu bytes. Remaining %4lu", size,
+  //   MAX_ALLOCATIONS - allocations);
+  // Logger::warn(message);
   return ptr;
 }
 

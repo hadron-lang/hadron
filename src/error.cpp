@@ -1,5 +1,5 @@
-#include "error.h"
-#include "types.h"
+#include "error.hpp"
+#include "types.hpp"
 
 #include <fcntl.h>
 #include <cstdio>

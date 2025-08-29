@@ -1,7 +1,7 @@
 .idea/
 .vscode/
 .cache/
-cmake-build-debug/
+build/
 
 *.hbc
 *.exe

@@ -1,4 +1,4 @@
-#include "util.h"
+#include "util.hpp"
 
 void *h_memcpy(void *dst, const void *src, const size_t n) {
   for (size_t i = 0; i < n; i++) {

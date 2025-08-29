@@ -1,5 +1,5 @@
-#include "file.h"
-#include "logger.h"
+#include "file.hpp"
+#include "logger.hpp"
 
 #include <cstring>
 #include <fcntl.h>
@@ -22,7 +22,7 @@ static int open_file(const char *file_name, const int flags) {
     }
   }
 
-  if ((fd = open(file_name, flags | O_NOFOLLOW | O_CLOEXEC, 0644)) == -1) {
+  if ((fd = open(file_name, flags | O_CREAT, 0644)) == -1) {
     Logger::fatal("File could not be opened");
     return -1;
   }

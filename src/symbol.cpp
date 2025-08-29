@@ -1,4 +1,4 @@
-#include "symbol.h"
+#include "symbol.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -6,7 +6,7 @@
 size_t SymbolTable::hash(const char *name) {
   size_t hash = 5381;
   while (*name) {
-    hash = (hash << 5) + hash + *name; // hash * 33 + c
+    hash = (hash << 5) + hash + *name;
     ++name;
   }
   return hash % SYMBOL_TABLE_SIZE;
@@ -51,6 +51,7 @@ bool SymbolTable::insert(
   if (strncmp(entry->name, name, SYMBOL_NAME_LEN) == 0)
     return false; // Already exists
   snprintf(entry->name, SYMBOL_NAME_LEN - 1, "%s", name);
+  printf("-> \"%s\"\n", entry->name);
   entry->name[SYMBOL_NAME_LEN - 1] = '\0'; // Ensure null-termination
   entry->location                  = location;
   entry->type                      = type;

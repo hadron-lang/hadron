@@ -1,7 +1,7 @@
 #ifndef HADRON_TEST_H
 #define HADRON_TEST_H 1
 
-#include "types.h"
+#include "types.hpp"
 
 typedef struct Error {
   const char  *name;
