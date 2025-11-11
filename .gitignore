@@ -1,0 +1,8 @@
+.cache/
+build/
+
+*.hbc
+*.exe
+*.out
+*.o
+*.d
