@@ -1,0 +1,19 @@
+---
+Language:        Cpp
+Standard:        Latest
+BasedOnStyle:    LLVM
+UseTab:          Always
+IndentWidth:     4
+TabWidth:        4
+ContinuationIndentWidth: 4
+ColumnLimit:     120
+PointerAlignment: Right
+SortIncludes:    true
+FixNamespaceComments: true
+AllowShortFunctionsOnASingleLine: Empty
+AccessModifierOffset: -4
+BreakBeforeBraces: Attach
+AlignAfterOpenBracket: Align
+AlignTrailingComments: true
+NamespaceIndentation: All
+...

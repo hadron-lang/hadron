@@ -41,3 +41,4 @@ dkms.conf
 cmake-build-*/
 out/
 .idea_modules/
+build/
