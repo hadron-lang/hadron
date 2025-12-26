@@ -40,6 +40,7 @@ namespace hadron::frontend {
 		KwFalse,
 		KwModule,
 		KwImport,
+		KwAs,
 		KwPub,
 		KwPriv,
 		KwTry,

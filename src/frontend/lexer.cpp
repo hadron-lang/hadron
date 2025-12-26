@@ -32,6 +32,7 @@ namespace hadron::frontend {
 		{"false", TokenType::KwFalse},
 		{"module", TokenType::KwModule},
 		{"import", TokenType::KwImport},
+		{"as", TokenType::KwAs},
 		{"public", TokenType::KwPub},
 		{"private", TokenType::KwPriv},
 		{"try", TokenType::KwTry},
