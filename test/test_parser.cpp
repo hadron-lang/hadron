@@ -290,3 +290,40 @@ TEST(ParserTest, HandlesComplexTypes) {
 	const auto &[name_path3, generic_args3] = get_node<NamedType>(generic_args[1]);
 	EXPECT_EQ(name_path3[0].text, "i32");
 }
+
+TEST(ParserTest, HandlesFunctionDeclaration) {
+	Lexer lexer("fx add(a: i32, b: i32) i32 { return a + b; }");
+	auto tokens = lexer.tokenize();
+	Parser parser(std::move(tokens));
+
+	const auto statements = parser.parse();
+	ASSERT_EQ(statements.size(), 1);
+
+	ASSERT_TRUE(is_type<FunctionDecl>(statements[0]));
+	const auto &[name, params, retType, body] = get_node<FunctionDecl>(statements[0]);
+
+	EXPECT_EQ(name.text, "add");
+	ASSERT_EQ(params.size(), 2);
+
+	EXPECT_EQ(params[0].name.text, "a");
+	ASSERT_TRUE(is_type<NamedType>(params[0].type));
+
+	ASSERT_TRUE(retType.has_value());
+	ASSERT_TRUE(is_type<NamedType>(*retType));
+	EXPECT_EQ(get_node<NamedType>(*retType).name_path[0].text, "i32");
+
+	ASSERT_EQ(body.size(), 1);
+	ASSERT_TRUE(is_type<ReturnStmt>(body[0]));
+}
+
+TEST(ParserTest, HandlesVoidFunction) {
+	Lexer lexer("fx log(msg: String) { }");
+	auto tokens = lexer.tokenize();
+	Parser parser(std::move(tokens));
+
+	const auto statements = parser.parse();
+	ASSERT_EQ(statements.size(), 1);
+
+	const auto &[name, params, retType, body] = get_node<FunctionDecl>(statements[0]);
+	EXPECT_FALSE(retType.has_value());
+}

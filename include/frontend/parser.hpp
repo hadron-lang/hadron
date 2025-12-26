@@ -31,10 +31,13 @@ namespace hadron::frontend {
 
 		Stmt declaration();
 		Stmt var_declaration();
+		std::vector<Param> parse_params();
+		Stmt function_declaration();
 		Stmt statement();
 		Stmt expression_statement();
 		Stmt if_statement();
 		Stmt while_statement();
+		Stmt return_statement();
 		std::vector<Stmt> block();
 		Stmt parse_block_stmt();
 

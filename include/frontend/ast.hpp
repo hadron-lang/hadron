@@ -85,8 +85,25 @@ namespace hadron::frontend {
 		std::unique_ptr<Stmt> body;
 	};
 
+	struct Param {
+		Token name;
+		Type type;
+	};
+
+	struct ReturnStmt {
+		Token keyword;
+		std::unique_ptr<Expr> value;
+	};
+
+	struct FunctionDecl {
+		Token name;
+		std::vector<Param> params;
+		std::optional<Type> return_type;
+		std::vector<Stmt> body;
+	};
+
 	struct Stmt {
-		using Kind = std::variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt>;
+		using Kind = std::variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt, ReturnStmt, FunctionDecl>;
 		Kind kind;
 	};
 } // namespace hadron::frontend

@@ -169,6 +169,8 @@ namespace hadron::frontend {
 	}
 
 	Stmt Parser::declaration() {
+		if (match({TokenType::KwFx}))
+			return function_declaration();
 		if (match({TokenType::KwVal, TokenType::KwVar}))
 			return var_declaration();
 		return statement();
@@ -190,7 +192,39 @@ namespace hadron::frontend {
 		return Stmt{VarDeclStmt{name, std::move(initializer), std::move(type_annotation), is_mutable, {}}};
 	}
 
+	std::vector<Param> Parser::parse_params() {
+		std::vector<Param> params;
+		if (!check(TokenType::RParen)) {
+			do {
+				const Token name = consume(TokenType::Identifier, "Expect parameter name.");
+				consume(TokenType::Colon, "Expect ':' after parameter name.");
+				Type type = parse_type();
+				params.push_back(Param{name, std::move(type)});
+			} while (match({TokenType::Comma}));
+		}
+		return params;
+	}
+
+	Stmt Parser::function_declaration() {
+		const Token name = consume(TokenType::Identifier, "Expect function name.");
+
+		consume(TokenType::LParen, "Expect '(' after function name.");
+		std::vector<Param> params = parse_params();
+		consume(TokenType::RParen, "Expect ')' after parameters.");
+
+		std::optional<Type> return_type;
+		if (check(TokenType::Identifier))
+			return_type = parse_type();
+
+		consume(TokenType::LBrace, "Expect '{' before function body.");
+		std::vector<Stmt> body = block();
+
+		return Stmt{FunctionDecl{name, std::move(params), std::move(return_type), std::move(body)}};
+	}
+
 	Stmt Parser::statement() {
+		if (match({TokenType::KwReturn}))
+			return return_statement();
 		if (match({TokenType::KwIf}))
 			return if_statement();
 		if (match({TokenType::KwWhile}))
@@ -230,6 +264,15 @@ namespace hadron::frontend {
 		consume(TokenType::RParen, "Expect ')' after while condition.");
 		Stmt body = parse_block_stmt();
 		return Stmt{WhileStmt{std::move(condition), std::make_unique<Stmt>(std::move(body))}};
+	}
+
+	Stmt Parser::return_statement() {
+		const Token keyword = previous();
+		std::unique_ptr<Expr> value = nullptr;
+		if (!check(TokenType::Semicolon))
+			value = std::make_unique<Expr>(expression());
+		consume(TokenType::Semicolon, "Expect ';' after return value.");
+		return Stmt{ReturnStmt{keyword, std::move(value)}};
 	}
 
 	std::vector<Stmt> Parser::block() {
