@@ -11,7 +11,12 @@ option(ENABLE_SANITIZERS "Enable Sanitizers" ON)
 option(BUILD_TESTS "Build unit tests" ON)
 
 find_package(LLVM REQUIRED CONFIG)
-llvm_map_components_to_libnames(llvm_libs core support native nativecodegen demangle)
+
+if (TARGET LLVM)
+  set(llvm_libs LLVM)
+else()
+  llvm_map_components_to_libnames(llvm_libs core support native nativecodegen demangle)
+endif()
 
 if (MSVC)
     set(HADRON_FLAGS /W4 /WX /permissive-)
