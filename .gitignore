@@ -42,3 +42,4 @@ cmake-build-*/
 out/
 .idea_modules/
 build/
+compile_commands.json
