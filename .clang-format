@@ -13,7 +13,11 @@ FixNamespaceComments: true
 AllowShortFunctionsOnASingleLine: Empty
 AccessModifierOffset: -4
 BreakBeforeBraces: Attach
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: BlockIndent
+BinPackArguments: false
+BinPackParameters: false
 AlignTrailingComments: true
 NamespaceIndentation: All
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: false
 ...

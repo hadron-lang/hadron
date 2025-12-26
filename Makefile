@@ -1,10 +1,12 @@
 export CC		:= clang
 export CXX		:= clang++
 
+N_PROCS			:= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
+
 BUILD_DIR		:= build
 BIN_DIR			:= $(BUILD_DIR)/bin
 GENERATOR		:= Ninja
-CMAKE_FLAGS		:= -G $(GENERATOR)
+CMAKE_FLAGS		:= -G $(GENERATOR) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 ifeq ($(OS),Windows_NT)
 	EXECUTABLE	:= hadronc.exe
@@ -15,30 +17,38 @@ else
 	GENERATOR	:= $(shell which ninja > /dev/null 2>&1 && echo "Ninja" || echo "Unix Makefiles")
 endif
 
-GREEN			:= \033[32m
-RESET			:= \033[0m
+GREEN			:= $(shell printf "\033[32m")
+BLUE			:= $(shell printf "\033[34m")
+RESET			:= $(shell printf "\033[0m")
 
 all: debug
 
+link-compdb:
+	@if [ -f $(BUILD_DIR)/compile_commands.json ]; then \
+		ln -sf $(BUILD_DIR)/compile_commands.json .; \
+	fi
+
 configure-debug:
-	@echo "$(GREEN)Configuring Debug Build...$(RESET)"
+	@echo "$(BLUE)Configuring Debug Build ($(GENERATOR))...$(RESET)"
 	@cmake -B $(BUILD_DIR) -S . $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON -DBUILD_TESTS=ON
+	@$(MAKE) link-compdb
 
 configure-release:
-	@echo "$(GREEN)Configuring Release Build...$(RESET)"
+	@echo "$(BLUE)Configuring Release Build ($(GENERATOR))...$(RESET)"
 	@cmake -B $(BUILD_DIR) -S . $(CMAKE_FLAGS) -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZERS=OFF -DBUILD_TESTS=ON
+	@$(MAKE) link-compdb
 
 debug: configure-debug
-	@echo "$(GREEN)Building Debug...$(RESET)"
-	@cmake --build $(BUILD_DIR)
+	@echo "$(GREEN)Building Debug (Jobs: $(N_PROCS))...$(RESET)"
+	@cmake --build $(BUILD_DIR) --parallel $(N_PROCS)
 
 release: configure-release
-	@echo "$(GREEN)Building Release...$(RESET)"
-	@cmake --build $(BUILD_DIR)
+	@echo "$(GREEN)Building Release (Jobs: $(N_PROCS))...$(RESET)"
+	@cmake --build $(BUILD_DIR) --parallel $(N_PROCS)
 
 test: debug
 	@echo "$(GREEN)Running Tests...$(RESET)"
-	@cd $(BUILD_DIR) && ctest --output-on-failure
+	@cd $(BUILD_DIR) && ctest --output-on-failure -j $(N_PROCS)
 
 run: debug
 	@echo "$(GREEN)Running Hadron Compiler...$(RESET)"
@@ -46,19 +56,23 @@ run: debug
 
 clean:
 	@rm -rf $(BUILD_DIR)
-	@echo "Build directory removed."
+	@rm -f compile_commands.json
+	@echo "$(BLUE)Build directory cleaned.$(RESET)"
 
 fmt:
-	@find src include tests -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
-	@echo "Code formatted."
+	@echo "$(BLUE)Formatting code...$(RESET)"
+	@find src include test -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' | xargs clang-format -i
+	@echo "$(GREEN)Code formatted.$(RESET)"
 
 help:
-	@printf "===== Available Commands =====\n"
+	@printf "$(BLUE)Hadron Compiler Build System$(RESET)\n"
+	@printf "==============================\n"
+	@printf "Available commands:\n"
 	@printf "%3s make debug%3s: Build with symbols and sanitizers (default)\n"
 	@printf "%3s make release : Build optimized for release\n"
-	@printf "%3s make test%4s: Run GTest tests suite\n"
+	@printf "%3s make test%4s: Run GTest suite\n"
 	@printf "%3s make run%5s: Run Hadron compiler\n"
 	@printf "%3s make clean%3s: Clean build artefacts\n"
+	@printf "%3s make fmt%5s: Format code using clang-format"
 
-
-.PHONY: all configure-debug configure-release debug release clean test run fmt help
+.PHONY: all link-compdb configure-debug configure-release debug release clean test run fmt help
