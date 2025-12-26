@@ -137,6 +137,25 @@ namespace hadron::frontend {
 		std::vector<EnumVariant> variants;
 	};
 
+	struct BreakStmt {
+		Token keyword;
+	};
+
+	struct ContinueStmt {
+		Token keyword;
+	};
+
+	struct LoopStmt {
+		std::unique_ptr<Stmt> body;
+	};
+
+	struct ForStmt {
+		std::unique_ptr<Stmt> initializer;
+		std::unique_ptr<Expr> condition;
+		std::unique_ptr<Expr> increment;
+		std::unique_ptr<Stmt> body;
+	};
+
 	struct Stmt {
 		using Kind = std::variant<
 			ExpressionStmt,
@@ -147,7 +166,11 @@ namespace hadron::frontend {
 			ReturnStmt,
 			FunctionDecl,
 			StructDecl,
-			EnumDecl>;
+			EnumDecl,
+			BreakStmt,
+			ContinueStmt,
+			LoopStmt,
+			ForStmt>;
 		Kind kind;
 	};
 } // namespace hadron::frontend

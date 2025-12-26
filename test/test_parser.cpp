@@ -126,7 +126,7 @@ TEST(ParserTest, HandlesStructDeclaration) {
 }
 
 TEST(ParserTest, HandlesComplexStruct) {
-	auto unit = parse_source(
+	const auto unit = parse_source(
 		"module list;"
 		"struct Node {"
 		"	next: ptr<Node>;"
@@ -167,7 +167,7 @@ TEST(ParserTest, HandlesEnumDeclaration) {
 }
 
 TEST(ParserTest, HandlesEnumWithValues) {
-	auto unit = parse_source(
+	const auto unit = parse_source(
 		"module test;"
 		"enum Color {"
 		"	Red = 1,"
@@ -189,4 +189,50 @@ TEST(ParserTest, HandlesEnumWithValues) {
 
 	EXPECT_EQ(variants[2].name.text, "Blue");
 	ASSERT_TRUE(variants[2].value == nullptr);
+}
+
+TEST(ParserTest, HandlesLoopAndBreak) {
+	const auto unit = parse_source("module test; fx main() { loop { break; } }");
+	const auto &stmt = get_first_stmt_of_main(unit);
+
+	ASSERT_TRUE(is_type<LoopStmt>(stmt));
+	const auto &[body] = get_node<LoopStmt>(stmt);
+
+	ASSERT_TRUE(is_type<BlockStmt>(*body));
+	const auto &[statements] = get_node<BlockStmt>(*body);
+	ASSERT_EQ(statements.size(), 1);
+	ASSERT_TRUE(is_type<BreakStmt>(statements[0]));
+}
+
+TEST(ParserTest, HandlesForLoop) {
+	const auto unit = parse_source("module test; fx main() { for (var i = 0; i < 10; i = i + 1) { continue; } }");
+	const auto &stmt = get_first_stmt_of_main(unit);
+
+	ASSERT_TRUE(is_type<ForStmt>(stmt));
+	const auto &[initializer, condition, increment, body] = get_node<ForStmt>(stmt);
+
+	ASSERT_TRUE(initializer != nullptr);
+	ASSERT_TRUE(is_type<VarDeclStmt>(*initializer));
+
+	ASSERT_TRUE(condition != nullptr);
+	ASSERT_TRUE(is_type<BinaryExpr>(*condition));
+
+	ASSERT_TRUE(increment != nullptr);
+	ASSERT_TRUE(is_type<BinaryExpr>(*increment));
+
+	ASSERT_TRUE(is_type<BlockStmt>(*body));
+	const auto &[statements] = get_node<BlockStmt>(*body);
+	ASSERT_TRUE(is_type<ContinueStmt>(statements[0]));
+}
+
+TEST(ParserTest, HandlesEmptyForLoop) {
+	const auto unit = parse_source("module test; fx main() { for (;;) {} }");
+	const auto &stmt = get_first_stmt_of_main(unit);
+
+	ASSERT_TRUE(is_type<ForStmt>(stmt));
+	const auto &forLoop = get_node<ForStmt>(stmt);
+
+	EXPECT_TRUE(forLoop.initializer == nullptr);
+	EXPECT_TRUE(forLoop.condition == nullptr);
+	EXPECT_TRUE(forLoop.increment == nullptr);
 }

@@ -141,8 +141,23 @@ namespace hadron::frontend {
 		return Type{NamedType{std::move(path), std::move(generics)}};
 	}
 
+	Expr Parser::assignment() {
+		Expr expr = equality();
+
+		if (match({TokenType::Eq})) {
+			Token equals = previous();
+			Expr value = assignment();
+
+			return Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), equals, std::make_unique<Expr>(std::move(value))}
+			};
+		}
+
+		return expr;
+	}
+
 	Expr Parser::expression() {
-		return equality();
+		return assignment();
 	}
 
 	Expr Parser::equality() {
@@ -272,6 +287,14 @@ namespace hadron::frontend {
 	}
 
 	Stmt Parser::statement() {
+		if (check(TokenType::KwBreak))
+			return break_statement();
+		if (check(TokenType::KwContinue))
+			return continue_statement();
+		if (check(TokenType::KwLoop))
+			return loop_statement();
+		if (check(TokenType::KwFor))
+			return for_statement();
 		if (match({TokenType::KwReturn}))
 			return return_statement();
 		if (match({TokenType::KwIf}))
@@ -313,6 +336,53 @@ namespace hadron::frontend {
 		consume(TokenType::RParen, "Expect ')' after while condition.");
 		Stmt body = parse_block_stmt();
 		return Stmt{WhileStmt{std::move(condition), std::make_unique<Stmt>(std::move(body))}};
+	}
+
+	Stmt Parser::loop_statement() {
+		consume(TokenType::KwLoop, "Expect 'loop'.");
+		Stmt body = parse_block_stmt();
+		return Stmt{LoopStmt{std::make_unique<Stmt>(std::move(body))}};
+	}
+
+	Stmt Parser::for_statement() {
+		consume(TokenType::KwFor, "Expect 'for'.");
+		consume(TokenType::LParen, "Expect '(' after 'for'.");
+
+		std::unique_ptr<Stmt> initializer = nullptr;
+		if (match({TokenType::Semicolon})) {
+		} else if (match({TokenType::KwVar, TokenType::KwVal}))
+			initializer = std::make_unique<Stmt>(var_declaration());
+		else
+			initializer = std::make_unique<Stmt>(expression_statement());
+
+		std::unique_ptr<Expr> condition = nullptr;
+		if (!check(TokenType::Semicolon))
+			condition = std::make_unique<Expr>(expression());
+
+		consume(TokenType::Semicolon, "Expect ';' after loop condition.");
+
+		std::unique_ptr<Expr> increment = nullptr;
+		if (!check(TokenType::RParen))
+			increment = std::make_unique<Expr>(expression());
+
+		consume(TokenType::RParen, "Expect ')' after for clauses.");
+		Stmt body = parse_block_stmt();
+
+		return Stmt{ForStmt{
+			std::move(initializer), std::move(condition), std::move(increment), std::make_unique<Stmt>(std::move(body))
+		}};
+	}
+
+	Stmt Parser::break_statement() {
+		const Token keyword = consume(TokenType::KwBreak, "Expect 'break'.");
+		consume(TokenType::Semicolon, "Expect ';' after break.");
+		return Stmt{BreakStmt{keyword}};
+	}
+
+	Stmt Parser::continue_statement() {
+		const Token keyword = consume(TokenType::KwContinue, "Expect 'continue'.");
+		consume(TokenType::Semicolon, "Expect ';' after 'continue'.");
+		return Stmt{ContinueStmt{keyword}};
 	}
 
 	Stmt Parser::return_statement() {

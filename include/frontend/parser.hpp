@@ -26,8 +26,9 @@ namespace hadron::frontend {
 
 		Type parse_type();
 
-		Expr expression();
 		Expr equality();
+		Expr assignment();
+		Expr expression();
 		Expr comparison();
 		Expr term();
 		Expr factor();
@@ -42,6 +43,10 @@ namespace hadron::frontend {
 		Stmt expression_statement();
 		Stmt if_statement();
 		Stmt while_statement();
+		Stmt loop_statement();
+		Stmt for_statement();
+		Stmt break_statement();
+		Stmt continue_statement();
 		Stmt return_statement();
 		Stmt struct_declaration();
 		Stmt enum_declaration();
