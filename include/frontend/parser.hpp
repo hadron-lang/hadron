@@ -43,6 +43,7 @@ namespace hadron::frontend {
 		Stmt if_statement();
 		Stmt while_statement();
 		Stmt return_statement();
+		Stmt struct_declaration();
 		std::vector<Stmt> block();
 		Stmt parse_block_stmt();
 

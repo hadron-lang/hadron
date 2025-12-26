@@ -101,3 +101,45 @@ TEST(ParserTest, HandlesVarDeclaration) {
 	EXPECT_EQ(name.text, "x");
 	EXPECT_TRUE(type.has_value());
 }
+
+TEST(ParserTest, HandlesStructDeclaration) {
+	const auto unit = parse_source(
+		"module game;"
+		"struct Point {"
+		"	x: i32;"
+		"	y: i32;"
+		"}"
+	);
+
+	ASSERT_EQ(unit.declarations.size(), 1);
+
+	ASSERT_TRUE(is_type<StructDecl>(unit.declarations[0]));
+	const auto &[name, fields] = get_node<StructDecl>(unit.declarations[0]);
+
+	EXPECT_EQ(fields[0].name.text, "x");
+	ASSERT_TRUE(is_type<NamedType>(fields[0].type));
+	EXPECT_EQ(get_node<NamedType>(fields[0].type).name_path[0].text, "i32");
+
+	EXPECT_EQ(fields[1].name.text, "y");
+	ASSERT_TRUE(is_type<NamedType>(fields[1].type));
+	EXPECT_EQ(get_node<NamedType>(fields[1].type).name_path[0].text, "i32");
+}
+
+TEST(ParserTest, HandlesComplexStruct) {
+	auto unit = parse_source(
+		"module list;"
+		"struct Node {"
+		"	next: ptr<Node>;"
+		"	data: slice<u8>;"
+		"}"
+	);
+
+	ASSERT_EQ(unit.declarations.size(), 1);
+	const auto &[name, fields] = get_node<StructDecl>(unit.declarations[0]);
+
+	EXPECT_EQ(fields[0].name.text, "next");
+	ASSERT_TRUE(is_type<PointerType>(fields[0].type));
+
+	EXPECT_EQ(fields[1].name.text, "data");
+	ASSERT_TRUE(is_type<SliceType>(fields[1].type));
+}

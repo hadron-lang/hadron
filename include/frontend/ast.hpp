@@ -117,8 +117,19 @@ namespace hadron::frontend {
 		std::vector<Stmt> body;
 	};
 
+	struct StructField {
+		Token name;
+		Type type;
+	};
+
+	struct StructDecl {
+		Token name;
+		std::vector<StructField> fields;
+	};
+
 	struct Stmt {
-		using Kind = std::variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt, ReturnStmt, FunctionDecl>;
+		using Kind = std::
+			variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt, ReturnStmt, FunctionDecl, StructDecl>;
 		Kind kind;
 	};
 } // namespace hadron::frontend

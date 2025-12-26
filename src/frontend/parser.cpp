@@ -101,7 +101,8 @@ namespace hadron::frontend {
 		// todo: add 'public' and 'private'
 		if (match({TokenType::KwFx}))
 			return function_declaration();
-		// todo: add 'struct'
+		if (check(TokenType::KwStruct))
+			return struct_declaration();
 		throw std::runtime_error("Expect top-level declaration (fx, struct, etc.). Found: " + std::string(peek().text));
 	}
 
@@ -319,6 +320,23 @@ namespace hadron::frontend {
 			value = std::make_unique<Expr>(expression());
 		consume(TokenType::Semicolon, "Expect ';' after return value.");
 		return Stmt{ReturnStmt{keyword, std::move(value)}};
+	}
+
+	Stmt Parser::struct_declaration() {
+		consume(TokenType::KwStruct, "Expect 'struct' keyword.");
+		Token name = consume(TokenType::Identifier, "Expect struct name.");
+		consume(TokenType::LBrace, "Expect '{' before struct body.");
+
+		std::vector<StructField> fields;
+		while (!check(TokenType::RBrace) && !is_at_end()) {
+			const Token fieldName = consume(TokenType::Identifier, "Expect field name.");
+			consume(TokenType::Colon, "Expect ':' after field name.");
+			Type fieldType = parse_type();
+			consume(TokenType::Semicolon, "Expect ';' after field declaration.");
+			fields.push_back(StructField{fieldName, std::move(fieldType)});
+		}
+		consume(TokenType::RBrace, "Expect '}' after struct body.");
+		return Stmt{StructDecl{name, std::move(fields)}};
 	}
 
 	std::vector<Stmt> Parser::block() {
