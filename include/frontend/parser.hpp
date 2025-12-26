@@ -19,6 +19,8 @@ namespace hadron::frontend {
 		bool match(const std::vector<TokenType> &types);
 		Token consume(TokenType type, std::string_view message);
 
+		Type parse_type();
+
 		Expr expression();
 		Expr equality();
 		Expr comparison();
@@ -31,7 +33,10 @@ namespace hadron::frontend {
 		Stmt var_declaration();
 		Stmt statement();
 		Stmt expression_statement();
+		Stmt if_statement();
+		Stmt while_statement();
 		std::vector<Stmt> block();
+		Stmt parse_block_stmt();
 
 		void synchronize();
 

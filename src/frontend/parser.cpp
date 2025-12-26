@@ -59,6 +59,39 @@ namespace hadron::frontend {
 		throw std::runtime_error(std::string(message) + " at " + peek().to_string());
 	}
 
+	Type Parser::parse_type() {
+		Token name = consume(TokenType::Identifier, "Expect type name");
+
+		if (name.text == "ptr") {
+			consume(TokenType::Lt, "Expect '<' after 'ptr'.");
+			Type inner = parse_type();
+			consume(TokenType::Gt, "Expect '>' after type argument.");
+			return Type{PointerType{std::make_unique<Type>(std::move(inner))}};
+		}
+
+		if (name.text == "slice") {
+			consume(TokenType::Lt, "Expect '<' after 'ptr'.");
+			Type inner = parse_type();
+			consume(TokenType::Gt, "Expect '>' after type argument.");
+			return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
+		}
+
+		std::vector<Token> path;
+		path.push_back(name);
+		while (match({TokenType::Dot}))
+			path.push_back(consume(TokenType::Identifier, "Expect identifier after '.'."));
+
+		std::vector<Type> generics;
+		if (match({TokenType::Lt})) {
+			do {
+				generics.push_back(parse_type());
+			} while (match({TokenType::Comma}));
+			consume(TokenType::Gt, "Expect '<' after generic arguments.");
+		}
+
+		return Type{NamedType{std::move(path), std::move(generics)}};
+	}
+
 	Expr Parser::expression() {
 		return equality();
 	}
@@ -144,14 +177,24 @@ namespace hadron::frontend {
 	Stmt Parser::var_declaration() {
 		const bool is_mutable = previous().type == TokenType::KwVar;
 		const Token name = consume(TokenType::Identifier, "Expect variable name.");
+
+		std::optional<Type> type_annotation;
+		if (match({TokenType::Colon}))
+			type_annotation = parse_type();
+
 		std::unique_ptr<Expr> initializer = nullptr;
 		if (match({TokenType::Eq}))
 			initializer = std::make_unique<Expr>(expression());
 		consume(TokenType::Semicolon, "Expect ';' after variable declaration.");
-		return Stmt{VarDeclStmt{name, std::move(initializer), is_mutable, {}}};
+
+		return Stmt{VarDeclStmt{name, std::move(initializer), std::move(type_annotation), is_mutable, {}}};
 	}
 
 	Stmt Parser::statement() {
+		if (match({TokenType::KwIf}))
+			return if_statement();
+		if (match({TokenType::KwWhile}))
+			return while_statement();
 		if (match({TokenType::LBrace}))
 			return Stmt{BlockStmt{block()}};
 		return expression_statement();
@@ -163,12 +206,43 @@ namespace hadron::frontend {
 		return Stmt{ExpressionStmt{std::move(expr)}};
 	}
 
+	Stmt Parser::if_statement() {
+		consume(TokenType::LParen, "Expect '(' after 'if'.");
+		Expr condition = expression();
+		consume(TokenType::RParen, "Expect ')' after if condition.");
+
+		Stmt thenBranch = parse_block_stmt();
+		std::unique_ptr<Stmt> elseBranch = nullptr;
+		if (match({TokenType::KwElse})) {
+			if (check(TokenType::KwIf)) {
+				advance();
+				elseBranch = std::make_unique<Stmt>(if_statement());
+			} else
+				elseBranch = std::make_unique<Stmt>(parse_block_stmt());
+		}
+
+		return Stmt{IfStmt{std::move(condition), std::make_unique<Stmt>(std::move(thenBranch)), std::move(elseBranch)}};
+	}
+
+	Stmt Parser::while_statement() {
+		consume(TokenType::LParen, "Expect '(' after 'while'.");
+		Expr condition = expression();
+		consume(TokenType::RParen, "Expect ')' after while condition.");
+		Stmt body = parse_block_stmt();
+		return Stmt{WhileStmt{std::move(condition), std::make_unique<Stmt>(std::move(body))}};
+	}
+
 	std::vector<Stmt> Parser::block() {
 		std::vector<Stmt> statements;
 		while (!check(TokenType::RBrace) && !is_at_end())
 			statements.push_back(declaration());
 		consume(TokenType::RBrace, "Expect '}' after block.");
 		return statements;
+	}
+
+	Stmt Parser::parse_block_stmt() {
+		consume(TokenType::LBrace, "Expect '{' before block.");
+		return Stmt{BlockStmt{block()}};
 	}
 
 	void Parser::synchronize() {

@@ -1,14 +1,34 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <variant>
 #include <vector>
 
 #include "token.hpp"
 
 namespace hadron::frontend {
+	struct Type;
 	struct Expr;
 	struct Stmt;
+
+	struct NamedType {
+		std::vector<Token> name_path;
+		std::vector<Type> generic_args;
+	};
+
+	struct PointerType {
+		std::unique_ptr<Type> inner;
+	};
+
+	struct SliceType {
+		std::unique_ptr<Type> inner;
+	};
+
+	struct Type {
+		using Kind = std::variant<NamedType, PointerType, SliceType>;
+		Kind kind;
+	};
 
 	struct LiteralExpr {
 		Token value;
@@ -45,16 +65,28 @@ namespace hadron::frontend {
 	struct VarDeclStmt {
 		Token name;
 		std::unique_ptr<Expr> initializer;
+		std::optional<Type> type_annotation;
 		bool is_mutable;
-		char padding[7];
+		char padding[15];
 	};
 
 	struct BlockStmt {
 		std::vector<Stmt> statements;
 	};
 
+	struct IfStmt {
+		Expr condition;
+		std::unique_ptr<Stmt> then_branch;
+		std::unique_ptr<Stmt> else_branch;
+	};
+
+	struct WhileStmt {
+		Expr condition;
+		std::unique_ptr<Stmt> body;
+	};
+
 	struct Stmt {
-		using Kind = std::variant<ExpressionStmt, VarDeclStmt, BlockStmt>;
+		using Kind = std::variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt>;
 		Kind kind;
 	};
 } // namespace hadron::frontend
