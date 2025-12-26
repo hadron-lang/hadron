@@ -6,17 +6,26 @@
 namespace hadron::frontend {
 	Parser::Parser(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
-	std::vector<Stmt> Parser::parse() {
-		std::vector<Stmt> statements;
+	CompilationUnit Parser::parse() {
+		if (!check(TokenType::KwModule))
+			throw std::runtime_error("Expect 'module' declaration at top of file.");
+
+		ModuleDecl module = parse_module();
+		std::vector<ImportDecl> imports;
+		while (check(TokenType::KwImport))
+			imports.push_back(parse_import());
+
+		std::vector<Stmt> declarations;
 		while (!is_at_end()) {
 			try {
-				statements.push_back(declaration());
+				declarations.push_back(top_level_declaration());
 			} catch (const std::runtime_error &error) {
 				std::cerr << "Parse Error: " << error.what() << "\n";
 				synchronize();
 			}
 		}
-		return statements;
+
+		return CompilationUnit{std::move(module), std::move(imports), std::move(declarations)};
 	}
 
 	const Token &Parser::peek() const {
@@ -59,8 +68,45 @@ namespace hadron::frontend {
 		throw std::runtime_error(std::string(message) + " at " + peek().to_string());
 	}
 
+	std::vector<Token> Parser::parse_qualified_name() {
+		std::vector<Token> path;
+		do {
+			path.push_back(consume(TokenType::Identifier, "Expect identifier in path."));
+		} while (match({TokenType::Dot}));
+		return path;
+	}
+
+	ModuleDecl Parser::parse_module() {
+		consume(TokenType::KwModule, "Expect 'module'.");
+		std::vector<Token> name_path = parse_qualified_name();
+		consume(TokenType::Semicolon, "Expect ';' after module name.");
+		return ModuleDecl{std::move(name_path)};
+	}
+
+	ImportDecl Parser::parse_import() {
+		consume(TokenType::KwImport, "Expect 'import'.");
+		std::vector<Token> path = parse_qualified_name();
+
+		std::optional<Token> alias;
+		if (check(TokenType::KwAs)) {
+			advance();
+			alias = consume(TokenType::Identifier, "Expect alias after 'as'.");
+		}
+
+		consume(TokenType::Semicolon, "Expect ';' after import.");
+		return ImportDecl{std::move(path), std::move(alias)};
+	}
+
+	Stmt Parser::top_level_declaration() {
+		// todo: add 'public' and 'private'
+		if (match({TokenType::KwFx}))
+			return function_declaration();
+		// todo: add 'struct'
+		throw std::runtime_error("Expect top-level declaration (fx, struct, etc.). Found: " + std::string(peek().text));
+	}
+
 	Type Parser::parse_type() {
-		Token name = consume(TokenType::Identifier, "Expect type name");
+		const Token name = consume(TokenType::Identifier, "Expect type name");
 
 		if (name.text == "ptr") {
 			consume(TokenType::Lt, "Expect '<' after 'ptr'.");

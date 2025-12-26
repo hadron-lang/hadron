@@ -19,6 +19,11 @@ namespace hadron::frontend {
 		bool match(const std::vector<TokenType> &types);
 		Token consume(TokenType type, std::string_view message);
 
+		std::vector<Token> parse_qualified_name();
+		ModuleDecl parse_module();
+		ImportDecl parse_import();
+		Stmt top_level_declaration();
+
 		Type parse_type();
 
 		Expr expression();
@@ -46,6 +51,6 @@ namespace hadron::frontend {
 	public:
 		explicit Parser(std::vector<Token> tokens);
 
-		[[nodiscard]] std::vector<Stmt> parse();
+		[[nodiscard]] CompilationUnit parse();
 	};
 } // namespace hadron::frontend

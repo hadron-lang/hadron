@@ -12,6 +12,21 @@ namespace hadron::frontend {
 	struct Expr;
 	struct Stmt;
 
+	struct ModuleDecl {
+		std::vector<Token> name_path;
+	};
+
+	struct ImportDecl {
+		std::vector<Token> path;
+		std::optional<Token> alias;
+	};
+
+	struct CompilationUnit {
+		ModuleDecl module;
+		std::vector<ImportDecl> imports;
+		std::vector<Stmt> declarations;
+	};
+
 	struct NamedType {
 		std::vector<Token> name_path;
 		std::vector<Type> generic_args;
