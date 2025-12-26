@@ -127,9 +127,27 @@ namespace hadron::frontend {
 		std::vector<StructField> fields;
 	};
 
+	struct EnumVariant {
+		Token name;
+		std::unique_ptr<Expr> value;
+	};
+
+	struct EnumDecl {
+		Token name;
+		std::vector<EnumVariant> variants;
+	};
+
 	struct Stmt {
-		using Kind = std::
-			variant<ExpressionStmt, VarDeclStmt, BlockStmt, IfStmt, WhileStmt, ReturnStmt, FunctionDecl, StructDecl>;
+		using Kind = std::variant<
+			ExpressionStmt,
+			VarDeclStmt,
+			BlockStmt,
+			IfStmt,
+			WhileStmt,
+			ReturnStmt,
+			FunctionDecl,
+			StructDecl,
+			EnumDecl>;
 		Kind kind;
 	};
 } // namespace hadron::frontend

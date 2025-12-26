@@ -143,3 +143,50 @@ TEST(ParserTest, HandlesComplexStruct) {
 	EXPECT_EQ(fields[1].name.text, "data");
 	ASSERT_TRUE(is_type<SliceType>(fields[1].type));
 }
+
+TEST(ParserTest, HandlesEnumDeclaration) {
+	const auto unit = parse_source(
+		"module game;"
+		"enum State {"
+		"	Idle,"
+		"	Running,"
+		"	Paused"
+		"}"
+	);
+
+	ASSERT_EQ(unit.declarations.size(), 1);
+
+	ASSERT_TRUE(is_type<EnumDecl>(unit.declarations[0]));
+	const auto &[name, variants] = get_node<EnumDecl>(unit.declarations[0]);
+
+	EXPECT_EQ(name.text, "State");
+	ASSERT_EQ(variants.size(), 3);
+	EXPECT_EQ(variants[0].name.text, "Idle");
+	EXPECT_EQ(variants[1].name.text, "Running");
+	EXPECT_EQ(variants[2].name.text, "Paused");
+}
+
+TEST(ParserTest, HandlesEnumWithValues) {
+	auto unit = parse_source(
+		"module test;"
+		"enum Color {"
+		"	Red = 1,"
+		"	Green = 2,"
+		"	Blue,"
+		"}"
+	);
+
+	ASSERT_EQ(unit.declarations.size(), 1);
+
+	ASSERT_TRUE(is_type<EnumDecl>(unit.declarations[0]));
+	const auto &[name, variants] = get_node<EnumDecl>(unit.declarations[0]);
+
+	EXPECT_EQ(variants[0].name.text, "Red");
+	ASSERT_TRUE(variants[0].value != nullptr);
+
+	EXPECT_EQ(variants[1].name.text, "Green");
+	ASSERT_TRUE(variants[1].value != nullptr);
+
+	EXPECT_EQ(variants[2].name.text, "Blue");
+	ASSERT_TRUE(variants[2].value == nullptr);
+}

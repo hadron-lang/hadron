@@ -103,6 +103,8 @@ namespace hadron::frontend {
 			return function_declaration();
 		if (check(TokenType::KwStruct))
 			return struct_declaration();
+		if (check(TokenType::KwEnum))
+			return enum_declaration();
 		throw std::runtime_error("Expect top-level declaration (fx, struct, etc.). Found: " + std::string(peek().text));
 	}
 
@@ -337,6 +339,28 @@ namespace hadron::frontend {
 		}
 		consume(TokenType::RBrace, "Expect '}' after struct body.");
 		return Stmt{StructDecl{name, std::move(fields)}};
+	}
+
+	Stmt Parser::enum_declaration() {
+		consume(TokenType::KwEnum, "Expect 'enum' keyword.");
+		Token name = consume(TokenType::Identifier, "Expect enum name.");
+		consume(TokenType::LBrace, "Expect '{' before enum variants.");
+
+		std::vector<EnumVariant> variants;
+		while (!check(TokenType::RBrace) && !is_at_end()) {
+			Token variantName = consume(TokenType::Identifier, "Expect enum variant name.");
+			std::unique_ptr<Expr> value = nullptr;
+			if (match({TokenType::Eq}))
+				value = std::make_unique<Expr>(expression());
+			variants.push_back(EnumVariant{variantName, std::move(value)});
+			if (!check(TokenType::RBrace))
+				consume(TokenType::Comma, "Expect ',' between enum variants.");
+			else
+				match({TokenType::Comma});
+		}
+
+		consume(TokenType::RBrace, "Expect '}' after enum variants.");
+		return Stmt{EnumDecl{name, std::move(variants)}};
 	}
 
 	std::vector<Stmt> Parser::block() {
