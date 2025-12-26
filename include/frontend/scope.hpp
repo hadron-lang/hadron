@@ -1,22 +1,42 @@
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 namespace hadron::frontend {
 	struct Symbol {
-		std::string_view name;
-		std::string_view type;
+		std::string name;
+		std::string type;
 	};
 
-	class SemanticError : public std::runtime_error {
+	class Scope {
 	public:
-		explicit SemanticError(std::string const& message) : runtime_error(message) {}
-	};
+		using Ptr = std::shared_ptr<Scope>;
 
-	struct Scope {
-		std::unordered_map<std::string, Symbol> symbols{};
-		Scope *parent{nullptr};
+		explicit Scope(Ptr parent = nullptr) : parent_(std::move(parent)) {}
+
+		bool define(const std::string &name, const std::string &type) {
+			if (symbols_.contains(name))
+				return false;
+			symbols_[name] = Symbol{name, type};
+			return true;
+		}
+
+		[[nodiscard]] std::optional<Symbol> resolve(const std::string &name) const {
+			if (const auto it = symbols_.find(name); it != symbols_.end())
+				return it->second;
+			if (parent_)
+				return parent_->resolve(name);
+			return std::nullopt;
+		}
+
+		[[nodiscard]] Ptr parent() const {
+			return parent_;
+		}
+
+	private:
+		std::unordered_map<std::string, Symbol> symbols_;
+		Ptr parent_;
 	};
-}
+} // namespace hadron::frontend

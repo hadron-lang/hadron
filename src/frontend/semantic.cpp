@@ -1,119 +1,139 @@
+#include <format>
+#include <iostream>
+
 #include "frontend/semantic.hpp"
 
-#include <variant>
-
 namespace hadron::frontend {
-	Semantic::Semantic(const CompilationUnit &unit) : unit_(unit) {}
-
-	std::vector<SemanticError> Semantic::analyze() {
-		for (auto &decl : unit_.declarations)
-			visit(decl);
-		return errors_;
+	Semantic::Semantic(CompilationUnit &unit) : unit_(unit) {
+		global_scope_ = std::make_shared<Scope>();
+		current_scope_ = global_scope_;
 	}
 
-	void Semantic::visit(const Stmt &stmt) {
-	    std::visit([this](auto &&s) {
-		    this->visit(s);
-	    }, stmt.kind);
-	}
-
-	void Semantic::visit(const BlockStmt &block) {
-		Scope local;
-		local.parent = currentScope_;
-		currentScope_ = &local;
-
-		for (const Stmt &stmt : block.statements)
-			visit(stmt);
-
-		currentScope_ = local.parent;
-	}
-
-	void Semantic::visit(const VarDeclStmt &var) {
-		if (currentScope_->symbols.contains(var.name.to_string())) {
-			errors_.emplace_back("Variable already declared");
-			return;
+	bool Semantic::analyze() {
+		for (const auto &[kind] : unit_.declarations) {
+			if (std::holds_alternative<FunctionDecl>(kind)) {
+				if (const auto &func = std::get<FunctionDecl>(kind);
+					!current_scope_->define(std::string(func.name.text), "fn"))
+					error(func.name, "Function '" + std::string(func.name.text) + "' already declared.");
+			}
+			// todo: structs, enums
 		}
-		if (var.initializer)
-			visit(*var.initializer);
-		const Symbol symbol(var.name.text);
-		currentScope_->symbols[var.name.to_string()] = symbol;
+
+		for (const auto &stmt : unit_.declarations)
+			analyze_stmt(stmt);
+
+		return errors_.empty();
 	}
 
-	void Semantic::visit(const IfStmt &stmt) {
-		const auto &cond = stmt.condition;
-		const auto &thenB = stmt.then_branch;
-		const auto &elseB = stmt.else_branch;
-		visit(cond);
-		if (thenB)
-			visit(*thenB);
-		if (elseB)
-			visit(*elseB);
+	void Semantic::enter_scope() {
+		current_scope_ = std::make_shared<Scope>(current_scope_);
 	}
 
-	void Semantic::visit(const WhileStmt &stmt) {
-		const auto &cond = stmt.condition;
-		const auto &body = stmt.body;
-		visit(cond);
-		if (body)
-			visit(*body);
+	void Semantic::exit_scope() {
+		current_scope_ = current_scope_->parent();
 	}
 
-	void Semantic::visit(const ExpressionStmt &expr) {
-		visit(expr.expression);
+	void Semantic::error(const Token &token, const std::string &message) {
+		char *err = static_cast<char *>(__builtin_alloca(256));
+		snprintf(err, 256, "%d:%d Semantic Error: %s", token.location.line, token.location.column, message.c_str());
+		errors_.push_back(std::string(err));
 	}
 
-	void Semantic::visit(const ReturnStmt &ret) {
-		if (ret.value)
-			visit(*ret.value);
+	template <class... Ts> struct overloaded : Ts... {
+		using Ts::operator()...;
+	};
+	template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+	void Semantic::analyze_stmt(const Stmt &stmt) {
+		std::visit(
+			overloaded{
+				[&](const BlockStmt &s) {
+					enter_scope();
+					for (const auto &sub_stmt : s.statements)
+						analyze_stmt(sub_stmt);
+					exit_scope();
+				},
+				[&](const VarDeclStmt &s) {
+					if (s.initializer)
+						analyze_expr(*s.initializer);
+					if (!current_scope_->define(std::string(s.name.text), "var"))
+						error(s.name, "Variable '" + std::string(s.name.text) + "' already declared in this scope.");
+				},
+				[&](const FunctionDecl &s) {
+					const FunctionDecl *prev_func = current_func_;
+					current_func_ = &s;
+					enter_scope();
+					for (const auto &[name, type] : s.params) {
+						if (!current_scope_->define(std::string(name.text), "param"))
+							error(name, "Duplicate parameter name '" + std::string(name.text) + "'.");
+					}
+					for (const auto &body_stmt : s.body)
+						analyze_stmt(body_stmt);
+					exit_scope();
+					current_func_ = prev_func;
+				},
+				[&](const ReturnStmt &s) {
+					const bool is_void = !current_func_->return_type.has_value();
+					const bool has_value = (s.value != nullptr);
+
+					if (is_void && has_value)
+						error(s.keyword, "Void function should not return a value.");
+					else if (!is_void && !has_value)
+						error(s.keyword, "Non-void function should return a value.");
+					if (s.value)
+						analyze_expr(*s.value);
+				},
+				[&](const IfStmt &s) {
+					analyze_expr(s.condition);
+					if (s.then_branch)
+						analyze_stmt(*s.then_branch);
+					if (s.else_branch)
+						analyze_stmt(*s.else_branch);
+				},
+				[&](const WhileStmt &s) {
+					analyze_expr(s.condition);
+					if (s.body)
+						analyze_stmt(*s.body);
+				},
+				[&](const LoopStmt &s) {
+					if (s.body)
+						analyze_stmt(*s.body);
+				},
+				[&](const ForStmt &s) {
+					enter_scope();
+					if (s.initializer)
+						analyze_stmt(*s.initializer);
+					if (s.condition)
+						analyze_expr(*s.condition);
+					if (s.increment)
+						analyze_expr(*s.increment);
+					if (s.body)
+						analyze_stmt(*s.body);
+					exit_scope();
+				},
+				[&](const ExpressionStmt &s) { analyze_expr(s.expression); },
+				[](const auto &) {}
+			},
+			stmt.kind
+		);
 	}
 
-	void Semantic::visit(const FunctionDecl &fx) {
-		Scope local;
-		local.parent = currentScope_;
-		currentScope_ = &local;
-
-		for (const auto &param : fx.params)
-			visit(param);
-
-		for (const auto &stmt : fx.body)
-			visit(stmt);
-		currentScope_ = local.parent;
-
-		const Symbol symbol(fx.name.text);
-		currentScope_->symbols[fx.name.to_string()] = symbol;
-	}
-
-	void Semantic::visit(const Expr &expr) {
-		std::visit([this](auto &&s) {
-			this->visit(s);
-		}, expr.kind);
-	}
-
-	void Semantic::visit(const BinaryExpr &expr) {
-		visit(*expr.left);
-		visit(*expr.right);
-	}
-
-	void Semantic::visit(const Param &param) const {
-		const Symbol symbol(param.name.text);
-		currentScope_->symbols[param.name.to_string()] = symbol;
-	}
-
-	void Semantic::visit(const GroupingExpr &group) {
-		if (group.expression)
-			visit(*group.expression);
-	}
-
-	void Semantic::visit(const LiteralExpr &) {}
-
-	void Semantic::visit(const UnaryExpr &expr) {
-		if (expr.right)
-			visit(*expr.right);
-	}
-
-	void Semantic::visit(const VariableExpr &expr) {
-		if (!currentScope_->symbols.contains(expr.name.to_string())) {
-			errors_.emplace_back("Variable not declared");
-		}
+	void Semantic::analyze_expr(const Expr &expr) {
+		std::visit(
+			overloaded{
+				[&](const VariableExpr &e) {
+					if (!current_scope_->resolve(std::string(e.name.text)))
+						error(e.name, "Undefined variable '" + std::string(e.name.text) + "'.");
+				},
+				[&](const BinaryExpr &e) {
+					analyze_expr(*e.left);
+					analyze_expr(*e.right);
+				},
+				[&](const UnaryExpr &e) { analyze_expr(*e.right); },
+				[&](const GroupingExpr &e) { analyze_expr(*e.expression); },
+				[](const auto &) {}
+			},
+			expr.kind
+		);
 	}
 } // namespace hadron::frontend

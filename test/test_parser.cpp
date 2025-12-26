@@ -26,7 +26,7 @@ const Stmt &get_first_stmt_of_main(const CompilationUnit &unit) {
 	return funcDecl.body[0];
 }
 
-TEST(ParserTest, HndlesModuleAndImports) {
+TEST(ParserTest, HandlesModuleAndImports) {
 	const auto unit = parse_source(
 		"module my.app;"
 		"import std.io;"

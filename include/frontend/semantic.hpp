@@ -5,29 +5,26 @@
 
 namespace hadron::frontend {
 	class Semantic {
-		const CompilationUnit &unit_;
-		Scope *currentScope_{};
-		std::vector<SemanticError> errors_{};
+		CompilationUnit &unit_;
+		Scope::Ptr global_scope_;
+		Scope::Ptr current_scope_;
+		std::vector<std::string> errors_;
+		const FunctionDecl *current_func_ = nullptr;
 
-		void visit(const VarDeclStmt &);
-		void visit(const BlockStmt &);
-		void visit(const ExpressionStmt &);
-		void visit(const IfStmt &);
-		void visit(const WhileStmt &);
-		void visit(const ReturnStmt &);
-		void visit(const FunctionDecl &);
-		void visit(const Stmt &);
-		void visit(const Expr &);
-		void visit(const Param &) const;
-		void visit(const LiteralExpr &);
-		void visit(const VariableExpr &);
-		void visit(const BinaryExpr &);
-		void visit(const UnaryExpr &);
-		void visit(const GroupingExpr &);
+		void enter_scope();
+		void exit_scope();
+		void error(const Token &token, const std::string &message);
+
+		void analyze_stmt(const Stmt &stmt);
+		void analyze_expr(const Expr &expr);
 
 	public:
-		explicit Semantic(const CompilationUnit &unit);
+		explicit Semantic(CompilationUnit &unit);
 
-		[[nodiscard]] std::vector<SemanticError> analyze();
+		[[nodiscard]] bool analyze();
+
+		[[nodiscard]] const std::vector<std::string> &errors() const {
+			return errors_;
+		}
 	};
-}
+} // namespace hadron::frontend
