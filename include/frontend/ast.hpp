@@ -33,11 +33,11 @@ namespace hadron::frontend {
 	};
 
 	struct PointerType {
-		std::unique_ptr<Type> inner;
+		std::shared_ptr<Type> inner;
 	};
 
 	struct SliceType {
-		std::unique_ptr<Type> inner;
+		std::shared_ptr<Type> inner;
 	};
 
 	struct Type {

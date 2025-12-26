@@ -4,10 +4,12 @@
 #include <string>
 #include <unordered_map>
 
+#include "ast.hpp"
+
 namespace hadron::frontend {
 	struct Symbol {
 		std::string name;
-		std::string type;
+		Type type;
 	};
 
 	class Scope {
@@ -16,7 +18,7 @@ namespace hadron::frontend {
 
 		explicit Scope(Ptr parent = nullptr) : parent_(std::move(parent)) {}
 
-		bool define(const std::string &name, const std::string &type) {
+		bool define(const std::string &name, const Type &type) {
 			if (symbols_.contains(name))
 				return false;
 			symbols_[name] = Symbol{name, type};

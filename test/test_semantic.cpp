@@ -81,3 +81,26 @@ TEST(SemanticTest, DetectsMissingReturnValue) {
 	ASSERT_FALSE(sem.errors().empty());
 	EXPECT_TRUE(has_error(sem.errors(), "Non-void function should return a value"));
 }
+
+TEST(SemanticTest, DetectsTypeMismatchInVarDecl) {
+	const auto sem = get_semantic_analysis("module test; fx main() { val x: String = 123; } ");
+	ASSERT_FALSE(sem.errors().empty());
+	EXPECT_TRUE(has_error(sem.errors(), "Type mismatch in variable declaration"));
+}
+
+TEST(SemanticTest, DetectsTypeMismatchInReturn) {
+	const auto sem = get_semantic_analysis("module test; fx main() i32 { return true; } ");
+	ASSERT_FALSE(sem.errors().empty());
+	EXPECT_TRUE(has_error(sem.errors(), "Return value type does not match"));
+}
+
+TEST(SemanticTest, DetectsTypeMismatchInBinaryExpr) {
+	const auto sem = get_semantic_analysis("module test; fx main() { val x = 1 + true; } ");
+	ASSERT_FALSE(sem.errors().empty());
+	EXPECT_TRUE(has_error(sem.errors(), "Type mismatch in binary expression"));
+}
+
+TEST(SemanticTest, HandlesTypeInference) {
+	const auto sem = get_semantic_analysis("module test; fx main() i32 { val x = 123; return x; } ");
+	EXPECT_TRUE(sem.errors().empty());
+}

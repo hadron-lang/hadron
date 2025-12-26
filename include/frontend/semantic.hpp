@@ -15,8 +15,11 @@ namespace hadron::frontend {
 		void exit_scope();
 		void error(const Token &token, const std::string &message);
 
+		[[nodiscard]] bool are_types_equal(const Type &a, const Type &b) const;
+		[[nodiscard]] Type create_basic_type(std::string_view name) const;
+
 		void analyze_stmt(const Stmt &stmt);
-		void analyze_expr(const Expr &expr);
+		std::optional<Type> analyze_expr(const Expr &expr);
 
 	public:
 		explicit Semantic(CompilationUnit &unit);
