@@ -10,8 +10,13 @@ namespace hadron::frontend {
 		std::string_view type;
 	};
 
+	class SemanticError : public std::runtime_error {
+	public:
+		explicit SemanticError(std::string const& message) : runtime_error(message) {}
+	};
+
 	struct Scope {
-		std::unordered_map<std::string, Symbol> symbols;
-		std::shared_ptr<Scope> parent;
+		std::unordered_map<std::string, Symbol> symbols{};
+		Scope *parent{nullptr};
 	};
 }

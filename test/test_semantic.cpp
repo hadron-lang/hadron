@@ -6,17 +6,28 @@
 
 using namespace hadron::frontend;
 
-bool analyze_source(std::string_view source) {
+auto analyze_source(const std::string_view source) {
 	Lexer lexer(source);
 	auto tokens = lexer.tokenize();
 	Parser parser(std::move(tokens));
-	auto unit = parser.parse();
+	const auto &unit = parser.parse();
 	Semantic sem(unit);
 	return sem.analyze();
 }
 
 TEST(SemanticTest, HandleModules) {
-	const bool result = analyze_source(
-		"module my.app");
-	EXPECT_TRUE(result);
+	const auto result = analyze_source(
+		"module my.app;");
+	EXPECT_EQ(result.size(), 0);
+}
+
+TEST(SemanticTest, CompleteTest) {
+	const auto result = analyze_source(
+		"module my.app;"
+		"fx main() {"
+		"	a + b;"
+		"}");
+	for (const auto &err : result) {
+		std::cout << err.what();
+	}
 }
