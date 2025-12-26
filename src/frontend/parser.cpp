@@ -210,7 +210,32 @@ namespace hadron::frontend {
 			Expr right = unary();
 			return Expr{UnaryExpr{op, std::make_unique<Expr>(std::move(right))}};
 		}
-		return primary();
+		return call();
+	}
+
+	Expr Parser::call() {
+		Expr expr = primary();
+		while (true) {
+			if (match({TokenType::LParen}))
+				expr = finish_call(std::move(expr));
+			else
+				break;
+		}
+		return expr;
+	}
+
+	Expr Parser::finish_call(Expr callee) {
+		std::vector<Expr> arguments;
+		if (!check(TokenType::RParen)) {
+			do {
+				if (arguments.size() >= 255) {
+				}
+				arguments.push_back(expression());
+			} while (match({TokenType::Comma}));
+		}
+
+		const Token paren = consume(TokenType::RParen, "Expect ')' after arguments.");
+		return Expr{CallExpr{std::make_unique<Expr>(std::move(callee)), paren, std::move(arguments)}};
 	}
 
 	Expr Parser::primary() {
@@ -413,12 +438,12 @@ namespace hadron::frontend {
 
 	Stmt Parser::enum_declaration() {
 		consume(TokenType::KwEnum, "Expect 'enum' keyword.");
-		Token name = consume(TokenType::Identifier, "Expect enum name.");
+		const Token name = consume(TokenType::Identifier, "Expect enum name.");
 		consume(TokenType::LBrace, "Expect '{' before enum variants.");
 
 		std::vector<EnumVariant> variants;
 		while (!check(TokenType::RBrace) && !is_at_end()) {
-			Token variantName = consume(TokenType::Identifier, "Expect enum variant name.");
+			const Token variantName = consume(TokenType::Identifier, "Expect enum variant name.");
 			std::unique_ptr<Expr> value = nullptr;
 			if (match({TokenType::Eq}))
 				value = std::make_unique<Expr>(expression());

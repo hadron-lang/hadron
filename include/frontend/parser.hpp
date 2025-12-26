@@ -33,6 +33,8 @@ namespace hadron::frontend {
 		Expr term();
 		Expr factor();
 		Expr unary();
+		Expr call();
+		Expr finish_call(Expr callee);
 		Expr primary();
 
 		Stmt declaration();

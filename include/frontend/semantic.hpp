@@ -15,8 +15,8 @@ namespace hadron::frontend {
 		void exit_scope();
 		void error(const Token &token, const std::string &message);
 
-		[[nodiscard]] bool are_types_equal(const Type &a, const Type &b) const;
-		[[nodiscard]] Type create_basic_type(std::string_view name) const;
+		[[nodiscard]] static bool are_types_equal(const Type &a, const Type &b);
+		[[nodiscard]] static Type create_basic_type(std::string_view name);
 
 		void analyze_stmt(const Stmt &stmt);
 		std::optional<Type> analyze_expr(const Expr &expr);

@@ -13,11 +13,16 @@ namespace hadron::frontend {
 		for (const auto &[kind] : unit_.declarations) {
 			if (std::holds_alternative<FunctionDecl>(kind)) {
 				const auto &func = std::get<FunctionDecl>(kind);
-				Type typeFn = create_basic_type("fn");
-				if (!current_scope_->define(std::string(func.name.text), typeFn))
+				std::vector<Type> paramTypes;
+				for (const auto &p : func.params)
+					paramTypes.push_back(p.type);
+				std::shared_ptr<Type> retType = nullptr;
+				if (func.return_type)
+					retType = std::make_shared<Type>(*func.return_type);
+				if (Type fnType = Type{FunctionType{std::move(paramTypes), std::move(retType)}};
+					!current_scope_->define(std::string(func.name.text), fnType))
 					error(func.name, "Function '" + std::string(func.name.text) + "' already declared.");
 			}
-			// todo: structs, enums
 		}
 
 		for (const auto &stmt : unit_.declarations)
@@ -40,27 +45,44 @@ namespace hadron::frontend {
 		errors_.push_back(std::string(err));
 	}
 
-	bool Semantic::are_types_equal(const Type &a, const Type &b) const {
+	bool Semantic::are_types_equal(const Type &a, const Type &b) {
 		if (a.kind.index() != b.kind.index())
 			return false;
 
 		if (std::holds_alternative<NamedType>(a.kind)) {
 			const auto &[name_path, generic_args] = std::get<NamedType>(a.kind);
 			const auto &[name_path1, generic_args1] = std::get<NamedType>(b.kind);
-			// todo: manage generics and complete path (std.io....)
 			if (name_path.size() != name_path1.size())
 				return false;
-			for (size_t i = 0; i < name_path1.size(); ++i) {
+			for (size_t i = 0; i < name_path.size(); ++i)
 				if (name_path[i].text != name_path1[i].text)
+					return false;
+			return true;
+		}
+
+		if (std::holds_alternative<FunctionType>(a.kind)) {
+			const auto &[params, return_type] = std::get<FunctionType>(a.kind);
+			const auto &[params1, return_type1] = std::get<FunctionType>(b.kind);
+			if (return_type && !return_type1)
+				return false;
+			if (!return_type && return_type1)
+				return false;
+			if (return_type && return_type1 && !are_types_equal(*return_type, *return_type1))
+				return false;
+			if (params.size() != params1.size())
+				return false;
+			for (size_t i = 0; i < params.size(); ++i) {
+				if (!are_types_equal(params[i], params1[i]))
 					return false;
 			}
 			return true;
 		}
-		// todo: PointerType, SliceType (recursive)
+		// todo: Pointer, Slice
+
 		return true;
 	}
 
-	Type Semantic::create_basic_type(const std::string_view name) const {
+	Type Semantic::create_basic_type(const std::string_view name) {
 		Token token{};
 		token.text = name;
 		return Type{NamedType{{token}, {}}};
@@ -202,6 +224,35 @@ namespace hadron::frontend {
 				},
 				[&](const UnaryExpr &e) -> std::optional<Type> { return analyze_expr(*e.right); },
 				[&](const GroupingExpr &e) -> std::optional<Type> { return analyze_expr(*e.expression); },
+				[&](const CallExpr &e) -> std::optional<Type> {
+					const auto calleeType = analyze_expr(*e.callee);
+					if (!calleeType)
+						return std::nullopt;
+					if (!std::holds_alternative<FunctionType>(calleeType->kind)) {
+						error(e.paren, "Can only call functions and classes.");
+						return std::nullopt;
+					}
+					const auto &[params, return_type] = std::get<FunctionType>(calleeType->kind);
+					if (e.args.size() != params.size()) {
+						error(
+							e.paren,
+							"Expected " + std::to_string(params.size()) + " arguments but got " +
+								std::to_string(e.args.size()) + "."
+						);
+						return std::nullopt;
+					}
+					for (size_t i = 0; i < e.args.size(); ++i) {
+						auto argType = analyze_expr(e.args[i]);
+						if (!argType)
+							return std::nullopt;
+						if (!are_types_equal(*argType, params[i])) {
+							error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
+						}
+					}
+					if (return_type)
+						return *return_type;
+					return create_basic_type("void");
+				},
 				[](const auto &) -> std::optional<Type> { return std::nullopt; }
 			},
 			expr.kind

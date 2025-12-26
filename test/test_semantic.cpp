@@ -104,3 +104,32 @@ TEST(SemanticTest, HandlesTypeInference) {
 	const auto sem = get_semantic_analysis("module test; fx main() i32 { val x = 123; return x; } ");
 	EXPECT_TRUE(sem.errors().empty());
 }
+
+TEST(SemanticTest, HandlesFunctionCall) {
+	const auto sem = get_semantic_analysis(
+		"module test;"
+		"fx add(a: i32, b: i32) -> i32 { return a + b; }"
+		"fx main() -> i32 { return add(1, 2); }"
+	);
+	EXPECT_TRUE(sem.errors().empty());
+}
+
+TEST(SemanticTest, DetectsArgCountMismatch) {
+	const auto sem = get_semantic_analysis(
+		"module test;"
+		"fx add(a: i32, b: i32) i32 { return a + b; }"
+		"fx main() { add(1); }"
+	);
+	ASSERT_FALSE(sem.errors().empty());
+	EXPECT_TRUE(has_error(sem.errors(), "Expected 2 arguments but got 1"));
+}
+
+TEST(SemanticTest, DetectsArgTypeMismatch) {
+	const auto sem = get_semantic_analysis(
+		"module test;"
+		"fx take_int(a: i32) {}"
+		"fx main() { take_int(true); }"
+	);
+	ASSERT_FALSE(sem.errors().empty());
+	EXPECT_TRUE(has_error(sem.errors(), "Argument 1 type mismatch"));
+}

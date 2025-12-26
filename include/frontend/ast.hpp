@@ -12,6 +12,11 @@ namespace hadron::frontend {
 	struct Expr;
 	struct Stmt;
 
+	struct FunctionType {
+		std::vector<Type> params;
+		std::shared_ptr<Type> return_type;
+	};
+
 	struct ModuleDecl {
 		std::vector<Token> name_path;
 	};
@@ -41,7 +46,7 @@ namespace hadron::frontend {
 	};
 
 	struct Type {
-		using Kind = std::variant<NamedType, PointerType, SliceType>;
+		using Kind = std::variant<NamedType, PointerType, SliceType, FunctionType>;
 		Kind kind;
 	};
 
@@ -68,8 +73,14 @@ namespace hadron::frontend {
 		std::unique_ptr<Expr> expression;
 	};
 
+	struct CallExpr {
+		std::unique_ptr<Expr> callee;
+		Token paren;
+		std::vector<Expr> args;
+	};
+
 	struct Expr {
-		using Kind = std::variant<LiteralExpr, VariableExpr, BinaryExpr, UnaryExpr, GroupingExpr>;
+		using Kind = std::variant<LiteralExpr, VariableExpr, BinaryExpr, UnaryExpr, GroupingExpr, CallExpr>;
 		Kind kind;
 	};
 
