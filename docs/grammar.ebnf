@@ -1,0 +1,156 @@
+Identifier      = [a-zA-Z_] { [a-zA-Z0-9_] } ;
+QualifiedName   = Identifier { "." Identifier } ;
+Number          = [0-9]+ [ "." [0-9]+ ] ;
+String          = '"' { AnyChar } '"' ;
+OperatorName    = "operator" ( "+" | "-" | "*" | "/" | "[]" | "==" ) ;
+Pattern         = Identifier | Literal | "_" ;
+
+CompilationUnit = ModuleDecl { ImportDecl } { TopLevelDecl } EOF ;
+
+ModuleDecl      = "module" QualifiedName ";" ;
+
+ImportDecl      = "import" QualifiedName [ "as" Identifier ] ";" ;
+
+TopLevelDecl    = [ Visibility ] [ "compiletime" ] (
+                  TypeDefinition
+                | FunctionDecl
+                | ConstantDecl
+                | ActorDecl
+                | MacroDecl
+                ) ;
+
+Visibility      = "public" | "private" | "protected" ;
+
+TypeDefinition  = ClassDecl
+				| StructDecl
+				| InterfaceDecl
+				| EnumDecl
+				| UnionDecl
+				| OpaqueDecl
+				| ExceptionDecl
+				| TypeAlias ;
+
+MemoryAttr      = "packed" | "align"  "(" Number ")" ;
+
+ClassDecl       = [ "abstract" | "final" | "sealed" ] "class" Identifier
+                  [ TypeParams ]
+                  [ "extends" TypeRef ]
+                  [ "implements" TypeList ]
+                  [ "permits" TypeList ]
+                  "{" { ClassMember } "}" ;
+
+StructDecl      = [ MemoryAttr ] ( "struct" | "value" | "record" ) Identifier
+                  [ TypeParams ] "{" { StructField } "}" ;
+
+StructField     = Identifier ":" TypeRef ";" ;
+
+InterfaceDecl   = "interface" Identifier [ TypeParams ] "{" { InterfaceMethod } "}" ;
+
+EnumDecl        = "enum" Identifier "{" { Identifier [ "=" Expression ] "," } "}" ;
+UnionDecl       = "union" Identifier "{" { StructField } "}" ;
+
+TypeAlias       = "type" Identifier "=" TypeRef ";" ;
+OpaqueDecl      = "opaque" Identifier ";" ;
+ExceptionDecl   = "exception" Identifier "{" { StructField } "}" ;
+
+FunctionDecl    = [ "static" | "override" ] "fx" ( Identifier | OperatorName )
+                  "(" [ ParamList ] ")"
+                  [ "throws" TypeRef ]
+                  [ "->" TypeRef ]
+                  ( Block | ";" ) ;
+
+ParamList       = Param { "," Param } ;
+Param           = Identifier ":" TypeRef ;
+
+ClassMember     = FieldDecl | FunctionDecl ;
+FieldDecl       = [ "static" ] ( "var" | "val" ) Identifier ":" TypeRef [ "=" Expression ] ";" ;
+
+ActorDecl       = "actor" Identifier "{" { FieldDecl | FunctionDecl } "}" ;
+
+Block           = "{" { Statement } "}" ;
+
+Statement       = VariableDecl
+                | AssignmentStmt
+                | ReturnStmt
+                | ControlFlowStmt
+                | ConcurrencyStmt
+                | ErrorHandlingStmt
+                | ExpressionStmt
+                | Block ;
+
+VariableDecl    = ( "var" | "val" ) Identifier [ ":" TypeRef ] [ "=" Expression ] ";" ;
+
+AssignmentStmt  = Expression ( "=" | "+=" | "-=" | "*=" | "/=" ) Expression ";" ;
+
+ReturnStmt      = "return" [ Expression ] ";" ;
+
+ControlFlowStmt = IfStmt
+                | WhileStmt
+                | LoopStmt
+                | ForStmt
+                | SwitchStmt
+                | MatchStmt
+                | "break" ";"
+                | "continue" ";" ;
+
+IfStmt          = "if" "(" Expression ")" Block [ "else" ( Block | IfStmt ) ] ;
+WhileStmt       = "while" "(" Expression ")" Block ;
+LoopStmt        = "loop" Block ;
+ForStmt         = "for" "(" [ VariableDecl ] ";" [ Expression ] ";" [ Expression ] ")" Block ;
+
+SwitchStmt      = "switch" "(" Expression ")" "{" { "case" Expression ":" Statement } [ "default" ":" Statement ] "}" ;
+
+MatchStmt       = "match" "(" Expression ")" "{" { MatchCase } "}" ;
+MatchCase       = Pattern "=>" ( Statement | Expression "," ) ;
+
+ConcurrencyStmt = "spawn" Block
+                | "synchronized" "(" Expression ")" Block
+                | ChannelOp ";" ;
+
+ChannelOp       = Expression ( "send" | "recv" ) Expression ;
+
+ErrorHandlingStmt = "throw" Expression ";"
+                  | "try" Block { "catch" "(" Identifier ":" TypeRef ")" Block } [ "finally" Block ] ;
+
+Expression      = LogicalOr ;
+
+LogicalOr       = LogicalAnd { "||" LogicalAnd } ;
+LogicalAnd      = Equality { "&&" Equality } ;
+Equality        = Relational { ( "==" | "!=" ) Relational } ;
+Relational      = Additive { ( "<" | ">" | "<=" | ">=" ) Additive } ;
+Additive        = Multiplicative { ( "+" | "-" ) Multiplicative } ;
+Multiplicative  = Unary { ( "*" | "/" | "%" ) Unary } ;
+
+Unary           = ( "!" | "-" | "&" | "*" | "await" | "try" ) Unary
+                | Primary ;
+
+Primary         = Literal
+                | Identifier
+                | FunctionCall
+                | MemberAccess
+                | ArrayAccess
+                | ParenExpression
+                | StructInit ;
+
+FunctionCall    = Primary "(" [ ArgList ] ")" ;
+MemberAccess    = Primary "." Identifier ;
+ArrayAccess     = Primary "[" Expression "]" ;
+ParenExpression = "(" Expression ")" ;
+
+StructInit      = TypeRef "{" [ FieldInitList ] "}" ;
+FieldInitList   = Identifier "=" Expression { "," Identifier "=" Expression } ;
+
+TypeRef         = BasicType
+                | PtrType
+                | SliceType
+                | GenericType
+                | QualifiedName ;
+
+BasicType       = "i8" | "i16" | "i32" | "i64"
+				| "u8" | "u16" | "u32" | "u64" | "usize"
+				| "f32" | "f64" | "f128"
+				| "byte" | "bool" | "void" ;
+
+PtrType         = "ptr" "<" TypeRef ">" ;
+SliceType       = "slice" "<" TypeRef ">" ;
+GenericType     = Identifier "<" TypeRef { "," TypeRef } ">" ;
