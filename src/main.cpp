@@ -1,6 +1,7 @@
 #include <iostream>
 #include <print>
 
+#include <llvm/Support/ManagedStatic.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 
@@ -24,28 +25,37 @@ fx main() i32 {
 )";
 
 int main(void) {
+	llvm::llvm_shutdown_obj shutdown_obj;
+
 	llvm::InitializeNativeTarget();
 	llvm::InitializeNativeTargetAsmPrinter();
+	llvm::InitializeAllTargetInfos();
+	llvm::InitializeAllTargets();
+	llvm::InitializeAllTargetMCs();
+	llvm::InitializeAllAsmParsers();
+	llvm::InitializeAllAsmPrinters();
 
 	std::print("Initialising Hadron Compiler...\n");
 
-	hadron::frontend::Lexer lexer(TEST_SOURCE);
-	auto tokens = lexer.tokenize();
-	hadron::frontend::Parser parser(std::move(tokens));
-	auto unit = parser.parse();
+	{
+		hadron::frontend::Lexer lexer(TEST_SOURCE);
+		auto tokens = lexer.tokenize();
+		hadron::frontend::Parser parser(std::move(tokens));
+		auto unit = parser.parse();
 
-	hadron::frontend::Semantic semantic(unit);
-	if (!semantic.analyze()) {
-		std::print(stderr, "Semantic errors:\n");
-		for (const auto &err : semantic.errors()) {
-			std::cerr << "	" << err << "\n";
+		if (hadron::frontend::Semantic semantic(unit); !semantic.analyze()) {
+			std::print(stderr, "Semantic errors:\n");
+			for (const auto &err : semantic.errors()) {
+				std::cerr << "	" << err << "\n";
+			}
+			llvm::llvm_shutdown();
+			return 1;
 		}
-		return 1;
-	}
 
-	hadron::backend::CodeGenerator code_generator(unit);
-	code_generator.generate();
-	code_generator.emit_object("output.o");
+		hadron::backend::CodeGenerator code_generator(unit);
+		code_generator.generate();
+		code_generator.emit_object("output.o");
+	}
 
 	return 0;
 }

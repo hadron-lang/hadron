@@ -1,15 +1,14 @@
+#include "backend/codegen.hpp"
+
 #include <iostream>
 
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
-
-#include "backend/codegen.hpp"
 
 namespace hadron::backend {
 	CodeGenerator::CodeGenerator(const frontend::CompilationUnit &unit) : unit_(unit) {
@@ -25,9 +24,10 @@ namespace hadron::backend {
 		module_->print(llvm::outs(), nullptr);
 	}
 
-	void CodeGenerator::emit_object(const std::string &filename) {
+	void CodeGenerator::emit_object(const std::string &filename) const {
 		const auto targetTripleStr = llvm::sys::getDefaultTargetTriple();
-		llvm::Triple targetTriple(targetTripleStr);
+		const llvm::Triple targetTriple(targetTripleStr);
+		module_->setTargetTriple(targetTriple);
 
 		std::string error;
 		const auto target = llvm::TargetRegistry::lookupTarget(targetTripleStr, error);
@@ -41,7 +41,15 @@ namespace hadron::backend {
 
 		const llvm::TargetOptions options;
 		constexpr auto rm = std::optional<llvm::Reloc::Model>();
-		const auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, options, rm);
+		const std::unique_ptr<llvm::TargetMachine> targetMachine(
+			target->createTargetMachine(targetTriple, cpu, features, options, rm)
+		);
+
+		if (!targetMachine) {
+			std::cerr << "Error: Could not create TargetMachine\n";
+			return;
+		}
+
 		module_->setDataLayout(targetMachine->createDataLayout());
 
 		std::error_code ec;

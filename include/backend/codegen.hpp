@@ -40,7 +40,7 @@ namespace hadron::backend {
 
 		void generate();
 
-		void emit_object(const std::string &filename);
+		void emit_object(const std::string &filename) const;
 
 		llvm::Module *get_module() const {
 			return module_.get();
