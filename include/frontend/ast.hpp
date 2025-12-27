@@ -6,16 +6,11 @@
 #include <vector>
 
 #include "token.hpp"
+#include "types.hpp"
 
 namespace hadron::frontend {
-	struct Type;
 	struct Expr;
 	struct Stmt;
-
-	struct FunctionType {
-		std::vector<Type> params;
-		std::shared_ptr<Type> return_type;
-	};
 
 	struct ModuleDecl {
 		std::vector<Token> name_path;
@@ -30,24 +25,6 @@ namespace hadron::frontend {
 		ModuleDecl module;
 		std::vector<ImportDecl> imports;
 		std::vector<Stmt> declarations;
-	};
-
-	struct NamedType {
-		std::vector<Token> name_path;
-		std::vector<Type> generic_args;
-	};
-
-	struct PointerType {
-		std::shared_ptr<Type> inner;
-	};
-
-	struct SliceType {
-		std::shared_ptr<Type> inner;
-	};
-
-	struct Type {
-		using Kind = std::variant<NamedType, PointerType, SliceType, FunctionType>;
-		Kind kind;
 	};
 
 	struct LiteralExpr {

@@ -1,12 +1,34 @@
-#include <format>
-#include <iostream>
-
 #include "frontend/semantic.hpp"
+#include <iostream>
+#include <variant>
 
 namespace hadron::frontend {
+	template <class... Ts> struct overloaded : Ts... {
+		using Ts::operator()...;
+	};
+	template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 	Semantic::Semantic(CompilationUnit &unit) : unit_(unit) {
 		global_scope_ = std::make_shared<Scope>();
 		current_scope_ = global_scope_;
+
+		global_scope_->define_type("byte", types.byte);
+		global_scope_->define_type("i8", types.i8);
+		global_scope_->define_type("i16", types.i16);
+		global_scope_->define_type("i32", types.i32);
+		global_scope_->define_type("i64", types.i64);
+		global_scope_->define_type("i128", types.i128);
+		global_scope_->define_type("u8", types.u8);
+		global_scope_->define_type("u16", types.u16);
+		global_scope_->define_type("u32", types.u32);
+		global_scope_->define_type("u64", types.u64);
+		global_scope_->define_type("u128", types.u128);
+		global_scope_->define_type("f32", types.f32);
+		global_scope_->define_type("f64", types.f64);
+		global_scope_->define_type("f128", types.f128);
+		global_scope_->define_type("bool", types.bool_);
+		global_scope_->define_type("str", types.str);
+		global_scope_->define_type("void", types.void_);
 	}
 
 	bool Semantic::analyze() {
@@ -15,12 +37,10 @@ namespace hadron::frontend {
 				const auto &func = std::get<FunctionDecl>(kind);
 				std::vector<Type> paramTypes;
 				for (const auto &[name, type] : func.params)
-					paramTypes.push_back(type);
-				std::shared_ptr<Type> retType = nullptr;
-				if (func.return_type)
-					retType = std::make_shared<Type>(*func.return_type);
-				if (Type fnType = Type{FunctionType{std::move(paramTypes), std::move(retType)}};
-					!current_scope_->define(std::string(func.name.text), fnType))
+					paramTypes.push_back(resolve_type(type));
+				auto ret = std::make_shared<Type>(func.return_type ? resolve_type(*func.return_type) : types.void_);
+				Type fnType = Type{FunctionType{std::move(paramTypes), ret}};
+				if (!current_scope_->define_value(std::string(func.name.text), fnType))
 					error(func.name, "Function '" + std::string(func.name.text) + "' already declared.");
 			}
 		}
@@ -46,52 +66,98 @@ namespace hadron::frontend {
 	}
 
 	bool Semantic::are_types_equal(const Type &a, const Type &b) {
+	auto print_type = [](const Type &t) {
+		std::visit(overloaded{
+			[](BuiltinType bt){ std::cout << "BuiltinType(" << static_cast<int>(bt) << ")"; },
+			[](const NamedType &nt){ 
+				std::cout << "NamedType(";
+				for (auto &tok : nt.name_path) std::cout << tok.text << ".";
+				std::cout << ")";
+			},
+			[](const FunctionType &ft){ 
+				std::cout << "FunctionType(params=[";
+				for (auto &p : ft.params) std::visit(overloaded{
+					[](BuiltinType bt){ std::cout << static_cast<int>(bt) << ","; },
+					[](auto&){ std::cout << "?,"; }
+				}, p.kind);
+				std::cout << "], return=";
+				if (ft.return_type)
+					std::visit(overloaded{
+						[](BuiltinType bt){ std::cout << static_cast<int>(bt); },
+						[](auto&){ std::cout << "?"; }
+					}, ft.return_type->kind);
+				else
+					std::cout << "void";
+				std::cout << ")";
+			},
+			[](const PointerType &pt){ std::cout << "PointerType(?)"; },
+			[](const SliceType &st){ std::cout << "SliceType(?)"; },
+			[](const ErrorType &){ std::cout << "ErrorType"; }
+		}, t.kind);
+	};
+
+	std::cout << "Comparing types: ";
+	print_type(a);
+	std::cout << " vs ";
+	print_type(b);
+	std::cout << std::endl;
+
+		if (std::holds_alternative<ErrorType>(a.kind) || std::holds_alternative<ErrorType>(b.kind))
+			return true;
+
 		if (a.kind.index() != b.kind.index())
 			return false;
 
-		if (std::holds_alternative<NamedType>(a.kind)) {
-			const auto &[name_path, generic_args] = std::get<NamedType>(a.kind);
-			const auto &[name_path1, generic_args1] = std::get<NamedType>(b.kind);
-			if (name_path.size() != name_path1.size())
-				return false;
-			for (size_t i = 0; i < name_path.size(); ++i)
-				if (name_path[i].text != name_path1[i].text)
-					return false;
-			return true;
-		}
+		if (auto ba = std::get_if<BuiltinType>(&a.kind))
+			return *ba == std::get<BuiltinType>(b.kind);
 
-		if (std::holds_alternative<FunctionType>(a.kind)) {
-			const auto &[params, return_type] = std::get<FunctionType>(a.kind);
-			const auto &[params1, return_type1] = std::get<FunctionType>(b.kind);
-			if (return_type && !return_type1)
+		if (auto fa = std::get_if<FunctionType>(&a.kind)) {
+			const auto &fb = std::get<FunctionType>(b.kind);
+			if (fa->params.size() != fb.params.size())
 				return false;
-			if (!return_type && return_type1)
-				return false;
-			if (return_type && return_type1 && !are_types_equal(*return_type, *return_type1))
-				return false;
-			if (params.size() != params1.size())
-				return false;
-			for (size_t i = 0; i < params.size(); ++i) {
-				if (!are_types_equal(params[i], params1[i]))
+			for (size_t i = 0; i < fa->params.size(); ++i)
+				if (!are_types_equal(fa->params[i], fb.params[i]))
 					return false;
-			}
-			return true;
+			return are_types_equal(*fa->return_type, *fb.return_type);
 		}
 		// todo: Pointer, Slice
 
-		return true;
+		return false;
 	}
 
-	Type Semantic::create_basic_type(const std::string_view name) {
-		Token token{};
-		token.text = name;
-		return Type{NamedType{{token}, {}}};
-	}
 
-	template <class... Ts> struct overloaded : Ts... {
-		using Ts::operator()...;
-	};
-	template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+
+	Type Semantic::resolve_type(const Type &t) {
+		return std::visit(overloaded {
+			[&](const BuiltinType &b) -> Type {
+				return t;
+			},
+			[&](const NamedType &n) -> Type {
+				if (n.name_path.empty())
+					return types.error;
+				const std::string type_name = std::string(n.name_path[0].text);
+				if (auto t = current_scope_->resolve_type(type_name))
+					return *t;
+				error(n.name_path[0], "Unknown type '" + type_name + "'");
+				return types.error;
+			},
+			[&](const PointerType &p) -> Type {
+				Type inner = resolve_type(*p.inner);
+				return Type{PointerType{std::make_unique<Type>(std::move(inner))}};
+			},
+			[&](const SliceType &s) -> Type {
+				Type inner = resolve_type(*s.inner);
+				return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
+			},
+			[&](const FunctionType &f) -> Type {
+				return Type{f}; // f is already resolved
+			},
+			[&](const ErrorType &e) -> Type {
+				return types.error;
+			}
+		}, t.kind);
+	}
 
 	void Semantic::analyze_stmt(const Stmt &stmt) {
 		std::visit(
@@ -106,9 +172,9 @@ namespace hadron::frontend {
 					std::optional<Type> initType = std::nullopt;
 					if (s.initializer)
 						initType = analyze_expr(*s.initializer);
-					Type finalType = create_basic_type("unknown");
+					Type finalType = types.error;
 					if (s.type_annotation) {
-						finalType = *s.type_annotation;
+						finalType = resolve_type(*s.type_annotation);
 						if (initType && !are_types_equal(finalType, *initType)) {
 							error(s.name, "Type mismatch in variable declaration.");
 						}
@@ -119,7 +185,7 @@ namespace hadron::frontend {
 						return;
 					}
 
-					if (!current_scope_->define(std::string(s.name.text), finalType))
+					if (!current_scope_->define_value(std::string(s.name.text), finalType))
 						error(s.name, "Variable '" + std::string(s.name.text) + "' already declared in this scope.");
 				},
 				[&](const FunctionDecl &s) {
@@ -127,7 +193,7 @@ namespace hadron::frontend {
 					current_func_ = &s;
 					enter_scope();
 					for (const auto &[name, type] : s.params) {
-						if (!current_scope_->define(std::string(name.text), type))
+						if (!current_scope_->define_value(std::string(name.text), resolve_type(type)))
 							error(name, "Duplicate parameter name '" + std::string(name.text) + "'.");
 					}
 					for (const auto &body_stmt : s.body)
@@ -147,7 +213,7 @@ namespace hadron::frontend {
 							error(s.keyword, "Non-void function should return a value.");
 						else {
 							if (const auto valType = analyze_expr(*s.value);
-								valType && !are_types_equal(*valType, *current_func_->return_type))
+								valType && !are_types_equal(*valType, resolve_type(*current_func_->return_type)))
 								error(s.keyword, "Return value type does not match function return type.");
 						}
 					}
@@ -192,15 +258,15 @@ namespace hadron::frontend {
 			overloaded{
 				[&](const LiteralExpr &e) -> std::optional<Type> {
 					if (e.value.type == TokenType::Number)
-						return create_basic_type("i32");
+						return types.i32;
 					if (e.value.type == TokenType::String)
-						return create_basic_type("String");
+						return types.str;
 					if (e.value.type == TokenType::KwFalse || e.value.type == TokenType::KwTrue)
-						return create_basic_type("bool");
+						return types.bool_;
 					return std::nullopt;
 				},
 				[&](const VariableExpr &e) -> std::optional<Type> {
-					auto sym = current_scope_->resolve(std::string(e.name.text));
+					auto sym = current_scope_->resolve_value(std::string(e.name.text));
 					if (!sym) {
 						error(e.name, "Undefined variable '" + std::string(e.name.text) + "'.");
 						return std::nullopt;
@@ -218,7 +284,7 @@ namespace hadron::frontend {
 					}
 					if (e.op.type == TokenType::EqEq || e.op.type == TokenType::Gt || e.op.type == TokenType::BangEq ||
 						e.op.type == TokenType::Lt || e.op.type == TokenType::GtEq || e.op.type == TokenType::LtEq)
-						return create_basic_type("bool");
+						return types.bool_;
 					return left;
 				},
 				[&](const UnaryExpr &e) -> std::optional<Type> { return analyze_expr(*e.right); },
@@ -250,7 +316,7 @@ namespace hadron::frontend {
 					}
 					if (return_type)
 						return *return_type;
-					return create_basic_type("void");
+					return types.void_;
 				},
 				[](const auto &) -> std::optional<Type> { return std::nullopt; }
 			},

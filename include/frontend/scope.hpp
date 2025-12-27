@@ -2,12 +2,18 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 #include <unordered_map>
 
-#include "ast.hpp"
+#include "types.hpp"
 
 namespace hadron::frontend {
 	struct Symbol {
+		std::string name;
+		Type type;
+	};
+
+	struct TypeSymbol {
 		std::string name;
 		Type type;
 	};
@@ -18,19 +24,27 @@ namespace hadron::frontend {
 
 		explicit Scope(Ptr parent = nullptr) : parent_(std::move(parent)) {}
 
-		bool define(const std::string &name, const Type &type) {
-			if (symbols_.contains(name))
+		bool define_value(const std::string &name, const Type &type) {
+			if (values_.contains(name))
 				return false;
-			symbols_[name] = Symbol{name, type};
+			values_[name] = Symbol{name, type};
 			return true;
 		}
 
-		[[nodiscard]] std::optional<Symbol> resolve(const std::string &name) const {
-			if (const auto it = symbols_.find(name); it != symbols_.end())
+		[[nodiscard]] std::optional<Symbol> resolve_value(const std::string &name) const {
+			if (const auto it = values_.find(name); it != values_.end())
 				return it->second;
-			if (parent_)
-				return parent_->resolve(name);
-			return std::nullopt;
+			return parent_ ? parent_->resolve_value(name) : std::nullopt;
+		}
+
+		bool define_type(const std::string &name, const Type &type) {
+			return types_.emplace(name, TypeSymbol{name, type}).second;
+		}
+
+		[[nodiscard]] std::optional<Type> resolve_type(const std::string &name) const {
+			if (auto it = types_.find(name); it != types_.end())
+				return it->second.type;
+			return parent_ ? parent_->resolve_type(name) : std::nullopt;
 		}
 
 		[[nodiscard]] Ptr parent() const {
@@ -38,7 +52,8 @@ namespace hadron::frontend {
 		}
 
 	private:
-		std::unordered_map<std::string, Symbol> symbols_;
+		std::unordered_map<std::string, Symbol> values_;
+		std::unordered_map<std::string, TypeSymbol> types_;
 		Ptr parent_;
 	};
 } // namespace hadron::frontend

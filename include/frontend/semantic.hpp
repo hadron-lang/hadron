@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ast.hpp"
+#include "frontend/types.hpp"
 #include "scope.hpp"
 
 namespace hadron::frontend {
 	class Semantic {
+		TypeTable types;
+
 		CompilationUnit &unit_;
 		Scope::Ptr global_scope_;
 		Scope::Ptr current_scope_;
@@ -15,8 +18,9 @@ namespace hadron::frontend {
 		void exit_scope();
 		void error(const Token &token, const std::string &message);
 
+		Type resolve_type(const Type &t);
+
 		[[nodiscard]] static bool are_types_equal(const Type &a, const Type &b);
-		[[nodiscard]] static Type create_basic_type(std::string_view name);
 
 		void analyze_stmt(const Stmt &stmt);
 		std::optional<Type> analyze_expr(const Expr &expr);
