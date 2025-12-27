@@ -1,3 +1,4 @@
+#include "gtest/gtest.h"
 #include <gtest/gtest.h>
 
 #include "frontend/lexer.hpp"
@@ -83,7 +84,7 @@ TEST(SemanticTest, DetectsMissingReturnValue) {
 }
 
 TEST(SemanticTest, DetectsTypeMismatchInVarDecl) {
-	const auto sem = get_semantic_analysis("module test; fx main() { val x: String = 123; } ");
+	const auto sem = get_semantic_analysis("module test; fx main() { val x: str = 123; } ");
 	ASSERT_FALSE(sem.errors().empty());
 	EXPECT_TRUE(has_error(sem.errors(), "Type mismatch in variable declaration"));
 }

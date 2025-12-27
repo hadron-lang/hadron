@@ -55,7 +55,7 @@ release: configure-release
 .PHONY: test
 test: debug
 	@echo "$(GREEN)Running Tests...$(RESET)"
-	@cd $(BUILD_DIR) && ctest --output-on-failure -j $(N_PROCS)
+	@cd $(BUILD_DIR) && GTEST_COLOR=1 ctest --output-on-failure -j $(N_PROCS)
 
 .PHONY: run
 run: debug
