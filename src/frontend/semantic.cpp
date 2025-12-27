@@ -14,8 +14,8 @@ namespace hadron::frontend {
 			if (std::holds_alternative<FunctionDecl>(kind)) {
 				const auto &func = std::get<FunctionDecl>(kind);
 				std::vector<Type> paramTypes;
-				for (const auto &p : func.params)
-					paramTypes.push_back(p.type);
+				for (const auto &[name, type] : func.params)
+					paramTypes.push_back(type);
 				std::shared_ptr<Type> retType = nullptr;
 				if (func.return_type)
 					retType = std::make_shared<Type>(*func.return_type);
@@ -140,7 +140,6 @@ namespace hadron::frontend {
 						return;
 					const bool is_void = !current_func_->return_type.has_value();
 					const bool has_value = (s.value != nullptr);
-
 					if (is_void && has_value)
 						error(s.keyword, "Void function should not return a value.");
 					else if (!is_void) {
@@ -209,8 +208,8 @@ namespace hadron::frontend {
 					return sym->type;
 				},
 				[&](const BinaryExpr &e) -> std::optional<Type> {
-					auto left = analyze_expr(*e.left);
-					auto right = analyze_expr(*e.right);
+					const auto left = analyze_expr(*e.left);
+					const auto right = analyze_expr(*e.right);
 					if (!left || !right)
 						return std::nullopt;
 					if (!are_types_equal(*left, *right)) {

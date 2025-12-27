@@ -421,7 +421,7 @@ namespace hadron::frontend {
 
 	Stmt Parser::struct_declaration() {
 		consume(TokenType::KwStruct, "Expect 'struct' keyword.");
-		Token name = consume(TokenType::Identifier, "Expect struct name.");
+		const Token name = consume(TokenType::Identifier, "Expect struct name.");
 		consume(TokenType::LBrace, "Expect '{' before struct body.");
 
 		std::vector<StructField> fields;
