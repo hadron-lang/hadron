@@ -3,15 +3,20 @@
 #include <iostream>
 
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/StandardInstrumentations.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils.h>
 
 namespace hadron::backend {
@@ -25,6 +30,25 @@ namespace hadron::backend {
 	void CodeGenerator::generate() {
 		for (const auto &decl : unit_.declarations)
 			gen_stmt(decl);
+
+		llvm::LoopAnalysisManager lam;
+		llvm::FunctionAnalysisManager fam;
+		llvm::CGSCCAnalysisManager cgam;
+		llvm::ModuleAnalysisManager mam;
+		llvm::PassBuilder pass_builder;
+
+		pass_builder.registerModuleAnalyses(mam);
+		pass_builder.registerCGSCCAnalyses(cgam);
+		pass_builder.registerFunctionAnalyses(fam);
+		pass_builder.registerLoopAnalyses(lam);
+		pass_builder.crossRegisterProxies(lam, fam, cgam, mam);
+
+		llvm::ModulePassManager mpm;
+		mpm.addPass(llvm::AlwaysInlinerPass());
+		mpm.addPass(llvm::createModuleToFunctionPassAdaptor(llvm::InstCombinePass()));
+		mpm.addPass(llvm::createModuleToFunctionPassAdaptor(llvm::SimplifyCFGPass()));
+
+		mpm.run(*module_, mam);
 
 		module_->print(llvm::outs(), nullptr);
 	}
@@ -96,9 +120,11 @@ namespace hadron::backend {
 						s.return_type ? get_llvm_type(*s.return_type) : llvm::Type::getVoidTy(*context_);
 
 					llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
-					llvm::Function *function = llvm::Function::Create(
-						funcType, llvm::Function::ExternalLinkage, std::string(s.name.text), module_.get()
-					);
+					const auto linkage =
+						(s.name.text == "main") ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
+					llvm::Function *function =
+						llvm::Function::Create(funcType, linkage, std::string(s.name.text), module_.get());
+					function->addFnAttr(llvm::Attribute::AlwaysInline);
 
 					llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(*context_, "entry", function);
 					builder_->SetInsertPoint(entryBlock);
@@ -341,7 +367,38 @@ namespace hadron::backend {
 						return nullptr;
 					}
 				},
-				[&](const frontend::CallExpr &e) -> llvm::Value * { return nullptr; },
+				[&](const frontend::CallExpr &e) -> llvm::Value * {
+					if (!std::holds_alternative<frontend::VariableExpr>(e.callee->kind)) {
+						std::cerr << "CodeGen Error: Only direct function calls are supported for now.\n";
+						return nullptr;
+					}
+
+					const auto &[name] = std::get<frontend::VariableExpr>(e.callee->kind);
+					const std::string funcName = std::string(name.text);
+					llvm::Function *calleeF = module_->getFunction(funcName);
+					if (!calleeF) {
+						std::cerr << "CodeGen Error: Unknown function referenced '" << funcName << "'.\n";
+						return nullptr;
+					}
+
+					if (e.args.size() != calleeF->arg_size()) {
+						std::cerr << "CodeGen Error: Incorrect # arguments passed.\n";
+						return nullptr;
+					}
+
+					std::vector<llvm::Value *> argsV;
+					for (const auto &arg : e.args) {
+						llvm::Value *argVal = gen_expr(arg);
+						if (!argVal)
+							return nullptr;
+						argsV.push_back(argVal);
+					}
+
+					if (calleeF->getReturnType()->isVoidTy())
+						return builder_->CreateCall(calleeF, argsV);
+
+					return builder_->CreateCall(calleeF, argsV, "calltmp");
+				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
 			expr.kind

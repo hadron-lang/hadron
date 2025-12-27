@@ -13,10 +13,12 @@ option(BUILD_TESTS "Build unit tests" ON)
 find_package(LLVM REQUIRED CONFIG)
 
 if (TARGET LLVM)
-  set(llvm_libs LLVM)
-else()
-  llvm_map_components_to_libnames(llvm_libs core support native nativecodegen demangle targetparser scalaropts instcombine)
-endif()
+    set(llvm_libs LLVM)
+else ()
+    llvm_map_components_to_libnames(llvm_libs core support
+            native nativecodegen demangle targetparser
+            scalaropts instcombine ipo passes)
+endif ()
 
 if (MSVC)
     set(HADRON_FLAGS /W4 /WX /permissive-)

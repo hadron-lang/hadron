@@ -13,12 +13,16 @@
 constexpr std::string_view TEST_SOURCE = R"(
 module main;
 
+fx add(a: i32, b: i32) i32 {
+	return a + b;
+}
+
 fx main() i32 {
 	var sum = 0;
 	var i = 0;
-	while (i < 10) {
-		sum = sum + i;
-		i = i + 1;
+	while (i < 1000000) {
+		sum = add(sum, i);
+		i = add(i, 1);
 	}
 	return sum;
 }
