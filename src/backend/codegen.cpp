@@ -3,18 +3,23 @@
 #include <iostream>
 
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils.h>
 
 namespace hadron::backend {
 	CodeGenerator::CodeGenerator(const frontend::CompilationUnit &unit) : unit_(unit) {
 		context_ = std::make_unique<llvm::LLVMContext>();
 		builder_ = std::make_unique<llvm::IRBuilder<>>(*context_);
 		module_ = std::make_unique<llvm::Module>(unit_.module.name_path[0].text, *context_);
+		initialize_passes();
 	}
 
 	void CodeGenerator::generate() {
@@ -113,6 +118,12 @@ namespace hadron::backend {
 
 					if (returnType->isVoidTy() && !entryBlock->getTerminator())
 						builder_->CreateRetVoid();
+
+					if (llvm::verifyFunction(*function, &llvm::errs()))
+						std::cerr << "Critical Error: Generated function '" << std::string(s.name.text)
+								  << "' is invalid !\n";
+
+					fpm_->run(*function);
 				},
 				[&](const frontend::VarDeclStmt &s) {
 					llvm::Value *initVal;
@@ -372,6 +383,16 @@ namespace hadron::backend {
 
 		// todo: default void for avoid the crash (to change)
 		return llvm::Type::getVoidTy(*context_);
+	}
+
+	void CodeGenerator::initialize_passes() {
+		fpm_ = std::make_unique<llvm::legacy::FunctionPassManager>(module_.get());
+		fpm_->add(llvm::createPromoteMemoryToRegisterPass());
+		fpm_->add(llvm::createInstructionCombiningPass());
+		fpm_->add(llvm::createReassociatePass());
+		fpm_->add(llvm::createEarlyCSEPass());
+		fpm_->add(llvm::createCFGSimplificationPass());
+		fpm_->doInitialization();
 	}
 
 	llvm::AllocaInst *

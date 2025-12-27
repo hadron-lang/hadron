@@ -7,6 +7,7 @@
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 
 #include "frontend/ast.hpp"
@@ -23,6 +24,7 @@ namespace hadron::backend {
 		std::unique_ptr<llvm::LLVMContext> context_;
 		std::unique_ptr<llvm::Module> module_;
 		std::unique_ptr<llvm::IRBuilder<>> builder_;
+		std::unique_ptr<llvm::legacy::FunctionPassManager> fpm_;
 		std::map<std::string, llvm::AllocaInst *> named_values_;
 		std::vector<LoopContext> loops_;
 
@@ -31,6 +33,8 @@ namespace hadron::backend {
 		llvm::Value *gen_expr(const frontend::Expr &expr);
 
 		llvm::Type *get_llvm_type(const frontend::Type &type) const;
+
+		void initialize_passes();
 
 		static llvm::AllocaInst *
 		create_entry_block_alloca(llvm::Function *func, llvm::StringRef varName, llvm::Type *type);
