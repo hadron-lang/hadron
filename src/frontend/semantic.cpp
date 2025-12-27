@@ -66,42 +66,6 @@ namespace hadron::frontend {
 	}
 
 	bool Semantic::are_types_equal(const Type &a, const Type &b) {
-	auto print_type = [](const Type &t) {
-		std::visit(overloaded{
-			[](BuiltinType bt){ std::cout << "BuiltinType(" << static_cast<int>(bt) << ")"; },
-			[](const NamedType &nt){ 
-				std::cout << "NamedType(";
-				for (auto &tok : nt.name_path) std::cout << tok.text << ".";
-				std::cout << ")";
-			},
-			[](const FunctionType &ft){ 
-				std::cout << "FunctionType(params=[";
-				for (auto &p : ft.params) std::visit(overloaded{
-					[](BuiltinType bt){ std::cout << static_cast<int>(bt) << ","; },
-					[](auto&){ std::cout << "?,"; }
-				}, p.kind);
-				std::cout << "], return=";
-				if (ft.return_type)
-					std::visit(overloaded{
-						[](BuiltinType bt){ std::cout << static_cast<int>(bt); },
-						[](auto&){ std::cout << "?"; }
-					}, ft.return_type->kind);
-				else
-					std::cout << "void";
-				std::cout << ")";
-			},
-			[](const PointerType &pt){ std::cout << "PointerType(?)"; },
-			[](const SliceType &st){ std::cout << "SliceType(?)"; },
-			[](const ErrorType &){ std::cout << "ErrorType"; }
-		}, t.kind);
-	};
-
-	std::cout << "Comparing types: ";
-	print_type(a);
-	std::cout << " vs ";
-	print_type(b);
-	std::cout << std::endl;
-
 		if (std::holds_alternative<ErrorType>(a.kind) || std::holds_alternative<ErrorType>(b.kind))
 			return true;
 
@@ -125,38 +89,34 @@ namespace hadron::frontend {
 		return false;
 	}
 
-
-
-
 	Type Semantic::resolve_type(const Type &t) {
-		return std::visit(overloaded {
-			[&](const BuiltinType &b) -> Type {
-				return t;
-			},
-			[&](const NamedType &n) -> Type {
-				if (n.name_path.empty())
+		return std::visit(
+			overloaded{
+				[&](const BuiltinType &b) -> Type { return t; },
+				[&](const NamedType &n) -> Type {
+					if (n.name_path.empty())
+						return types.error;
+					const std::string type_name = std::string(n.name_path[0].text);
+					if (auto t = current_scope_->resolve_type(type_name))
+						return *t;
+					error(n.name_path[0], "Unknown type '" + type_name + "'");
 					return types.error;
-				const std::string type_name = std::string(n.name_path[0].text);
-				if (auto t = current_scope_->resolve_type(type_name))
-					return *t;
-				error(n.name_path[0], "Unknown type '" + type_name + "'");
-				return types.error;
+				},
+				[&](const PointerType &p) -> Type {
+					Type inner = resolve_type(*p.inner);
+					return Type{PointerType{std::make_unique<Type>(std::move(inner))}};
+				},
+				[&](const SliceType &s) -> Type {
+					Type inner = resolve_type(*s.inner);
+					return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
+				},
+				[&](const FunctionType &f) -> Type {
+					return Type{f}; // f is already resolved
+				},
+				[&](const ErrorType &e) -> Type { return types.error; }
 			},
-			[&](const PointerType &p) -> Type {
-				Type inner = resolve_type(*p.inner);
-				return Type{PointerType{std::make_unique<Type>(std::move(inner))}};
-			},
-			[&](const SliceType &s) -> Type {
-				Type inner = resolve_type(*s.inner);
-				return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
-			},
-			[&](const FunctionType &f) -> Type {
-				return Type{f}; // f is already resolved
-			},
-			[&](const ErrorType &e) -> Type {
-				return types.error;
-			}
-		}, t.kind);
+			t.kind
+		);
 	}
 
 	void Semantic::analyze_stmt(const Stmt &stmt) {
