@@ -20,10 +20,12 @@ namespace hadron::frontend {
 
 		Type resolve_type(const Type &t);
 
-		[[nodiscard]] static bool are_types_equal(const Type &a, const Type &b);
-
 		void analyze_stmt(const Stmt &stmt);
 		std::optional<Type> analyze_expr(const Expr &expr);
+
+		[[nodiscard]] static bool are_types_equal(const Type &a, const Type &b);
+		[[nodiscard]] static bool is_integer_type(const Type &type);
+		[[nodiscard]] static bool check_int_literal(const std::string &text, const Type &type, bool is_negative);
 
 	public:
 		explicit Semantic(CompilationUnit &unit);

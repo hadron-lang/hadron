@@ -34,9 +34,10 @@ namespace hadron::frontend {
 				std::vector<Type> paramTypes;
 				for (const auto &[name, type] : func.params)
 					paramTypes.push_back(resolve_type(type));
-				auto ret = std::make_shared<Type>(func.return_type ? resolve_type(*func.return_type) : types.void_);
-				Type fnType = Type{FunctionType{std::move(paramTypes), ret}};
-				if (!current_scope_->define_value(std::string(func.name.text), fnType))
+				const auto ret =
+					std::make_shared<Type>(func.return_type ? resolve_type(*func.return_type) : types.void_);
+				if (Type fnType = Type{FunctionType{std::move(paramTypes), ret}};
+					!current_scope_->define_value(std::string(func.name.text), fnType))
 					error(func.name, "Function '" + std::string(func.name.text) + "' already declared.");
 			}
 		}
@@ -61,30 +62,6 @@ namespace hadron::frontend {
 		errors_.push_back(std::string(err));
 	}
 
-	bool Semantic::are_types_equal(const Type &a, const Type &b) {
-		if (std::holds_alternative<ErrorType>(a.kind) || std::holds_alternative<ErrorType>(b.kind))
-			return true;
-
-		if (a.kind.index() != b.kind.index())
-			return false;
-
-		if (auto ba = std::get_if<BuiltinType>(&a.kind))
-			return *ba == std::get<BuiltinType>(b.kind);
-
-		if (auto fa = std::get_if<FunctionType>(&a.kind)) {
-			const auto &fb = std::get<FunctionType>(b.kind);
-			if (fa->params.size() != fb.params.size())
-				return false;
-			for (size_t i = 0; i < fa->params.size(); ++i)
-				if (!are_types_equal(fa->params[i], fb.params[i]))
-					return false;
-			return are_types_equal(*fa->return_type, *fb.return_type);
-		}
-		// todo: Pointer, Slice
-
-		return false;
-	}
-
 	Type Semantic::resolve_type(const Type &t) {
 		return std::visit(
 			overloaded{
@@ -93,8 +70,8 @@ namespace hadron::frontend {
 					if (n.name_path.empty())
 						return types.error;
 					const std::string type_name = std::string(n.name_path[0].text);
-					if (auto t = current_scope_->resolve_type(type_name))
-						return *t;
+					if (auto tp = current_scope_->resolve_type(type_name))
+						return *tp;
 					error(n.name_path[0], "Unknown type '" + type_name + "'");
 					return types.error;
 				},
@@ -128,11 +105,48 @@ namespace hadron::frontend {
 					std::optional<Type> initType = std::nullopt;
 					if (s.initializer)
 						initType = analyze_expr(*s.initializer);
+
 					Type finalType = types.error;
+
 					if (s.type_annotation) {
 						finalType = resolve_type(*s.type_annotation);
+
 						if (initType && !are_types_equal(finalType, *initType)) {
-							error(s.name, "Type mismatch in variable declaration.");
+							bool allowed = false;
+							const Token *litToken = nullptr;
+							bool isNeg = false;
+
+							if (s.initializer) {
+								if (std::holds_alternative<LiteralExpr>(s.initializer->kind)) {
+									const auto &[value] = std::get<LiteralExpr>(s.initializer->kind);
+									if (value.type == TokenType::Number) {
+										litToken = &value;
+										isNeg = false;
+									}
+								} else if (std::holds_alternative<UnaryExpr>(s.initializer->kind)) {
+									if (const auto &[op, right] = std::get<UnaryExpr>(s.initializer->kind);
+										op.type == TokenType::Minus &&
+										std::holds_alternative<LiteralExpr>(right->kind)) {
+										const auto &[value] = std::get<LiteralExpr>(right->kind);
+										if (value.type == TokenType::Number) {
+											litToken = &value;
+											isNeg = true;
+										}
+									}
+								}
+							}
+
+							if (litToken && is_integer_type(finalType)) {
+								if (check_int_literal(std::string(litToken->text), finalType, isNeg)) {
+									allowed = true;
+								} else {
+									error(*litToken, "Integer literal out of range for type.");
+									return;
+								}
+							}
+
+							if (!allowed)
+								error(s.name, "Type mismatch in variable declaration.");
 						}
 					} else if (initType)
 						finalType = *initType;
@@ -140,7 +154,6 @@ namespace hadron::frontend {
 						error(s.name, "Variable must have a type annotation or an initializer.");
 						return;
 					}
-
 					if (!current_scope_->define_value(std::string(s.name.text), finalType))
 						error(s.name, "Variable '" + std::string(s.name.text) + "' already declared in this scope.");
 				},
@@ -161,8 +174,7 @@ namespace hadron::frontend {
 					if (!current_func_)
 						return;
 					const bool is_void = !current_func_->return_type.has_value();
-					const bool has_value = (s.value != nullptr);
-					if (is_void && has_value)
+					if (const bool has_value = (s.value != nullptr); is_void && has_value)
 						error(s.keyword, "Void function should not return a value.");
 					else if (!is_void) {
 						if (!has_value)
@@ -278,5 +290,70 @@ namespace hadron::frontend {
 			},
 			expr.kind
 		);
+	}
+
+	bool Semantic::are_types_equal(const Type &a, const Type &b) {
+		if (std::holds_alternative<ErrorType>(a.kind) || std::holds_alternative<ErrorType>(b.kind))
+			return true;
+
+		if (a.kind.index() != b.kind.index())
+			return false;
+
+		if (const auto ba = std::get_if<BuiltinType>(&a.kind))
+			return *ba == std::get<BuiltinType>(b.kind);
+
+		if (const auto fa = std::get_if<FunctionType>(&a.kind)) {
+			const auto &[params, return_type] = std::get<FunctionType>(b.kind);
+			if (fa->params.size() != params.size())
+				return false;
+			for (size_t i = 0; i < fa->params.size(); ++i)
+				if (!are_types_equal(fa->params[i], params[i]))
+					return false;
+			return are_types_equal(*fa->return_type, *return_type);
+		}
+
+		// todo: Pointer, Slice
+
+		return false;
+	}
+
+	bool Semantic::is_integer_type(const Type &type) {
+		if (!std::holds_alternative<NamedType>(type.kind))
+			return false;
+		if (std::get<NamedType>(type.kind).name_path.empty())
+			return false;
+		const auto &name = std::get<NamedType>(type.kind).name_path[0].text;
+		return name == "i8" || name == "i16" || name == "i32" || name == "i64" || name == "u8" || name == "u16" ||
+			   name == "u32" || name == "u64" || name == "usize";
+	}
+
+	bool Semantic::check_int_literal(const std::string &text, const Type &type, const bool is_negative) {
+		try {
+			const unsigned long long val = std::stoull(text);
+			const auto &name = std::get<NamedType>(type.kind).name_path[0].text;
+
+			if (name == "u8")
+				return !is_negative && val <= UINT8_MAX;
+			if (name == "u16")
+				return !is_negative && val <= UINT16_MAX;
+			if (name == "u32")
+				return !is_negative && val <= UINT32_MAX;
+			if (name == "u64" || name == "usize")
+				return !is_negative && val <= ULONG_MAX;
+			if (name == "i8")
+				return (!is_negative && val <= 127) || (is_negative && val <= 128);
+			if (name == "i16")
+				return (!is_negative && val <= 32767) || (is_negative && val <= 32768);
+			if (name == "i32")
+				return (!is_negative && val <= 2147483647ULL) || (is_negative && val <= 2147483648ULL);
+			if (name == "i64") {
+				if (!is_negative)
+					return val <= 9223372036854775807ULL;
+				return val <= 9223372036854775808ULL;
+			}
+			return false;
+		} catch (...) {
+			return false;
+		}
 	}
 } // namespace hadron::frontend
