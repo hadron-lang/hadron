@@ -21,6 +21,7 @@ namespace hadron::frontend {
 		global_scope_->define_type("u16", types.u16);
 		global_scope_->define_type("u32", types.u32);
 		global_scope_->define_type("u64", types.u64);
+		global_scope_->define_type("usize", types.u64);
 		global_scope_->define_type("f32", types.f32);
 		global_scope_->define_type("f64", types.f64);
 		global_scope_->define_type("bool", types.bool_);
@@ -318,39 +319,46 @@ namespace hadron::frontend {
 	}
 
 	bool Semantic::is_integer_type(const Type &type) {
-		if (!std::holds_alternative<NamedType>(type.kind))
-			return false;
-		if (std::get<NamedType>(type.kind).name_path.empty())
-			return false;
-		const auto &name = std::get<NamedType>(type.kind).name_path[0].text;
-		return name == "i8" || name == "i16" || name == "i32" || name == "i64" || name == "u8" || name == "u16" ||
-			   name == "u32" || name == "u64" || name == "usize";
+		if (std::holds_alternative<BuiltinType>(type.kind)) {
+			const auto builtinType = std::get<BuiltinType>(type.kind);
+			return builtinType == BuiltinType::I8 || builtinType == BuiltinType::I16 ||
+				   builtinType == BuiltinType::I32 || builtinType == BuiltinType::I64 ||
+				   builtinType == BuiltinType::U8 || builtinType == BuiltinType::U16 ||
+				   builtinType == BuiltinType::U32 || builtinType == BuiltinType::U64;
+		}
+
+		return false;
 	}
 
 	bool Semantic::check_int_literal(const std::string &text, const Type &type, const bool is_negative) {
 		try {
 			const unsigned long long val = std::stoull(text);
-			const auto &name = std::get<NamedType>(type.kind).name_path[0].text;
 
-			if (name == "u8")
-				return !is_negative && val <= UINT8_MAX;
-			if (name == "u16")
-				return !is_negative && val <= UINT16_MAX;
-			if (name == "u32")
-				return !is_negative && val <= UINT32_MAX;
-			if (name == "u64" || name == "usize")
-				return !is_negative && val <= ULONG_MAX;
-			if (name == "i8")
-				return (!is_negative && val <= 127) || (is_negative && val <= 128);
-			if (name == "i16")
-				return (!is_negative && val <= 32767) || (is_negative && val <= 32768);
-			if (name == "i32")
-				return (!is_negative && val <= 2147483647ULL) || (is_negative && val <= 2147483648ULL);
-			if (name == "i64") {
-				if (!is_negative)
-					return val <= 9223372036854775807ULL;
-				return val <= 9223372036854775808ULL;
+			if (std::holds_alternative<BuiltinType>(type.kind)) {
+				switch (std::get<BuiltinType>(type.kind)) {
+				case BuiltinType::U8:
+					return !is_negative && val <= UINT8_MAX;
+				case BuiltinType::U16:
+					return !is_negative && val <= UINT16_MAX;
+				case BuiltinType::U32:
+					return !is_negative && val <= UINT32_MAX;
+				case BuiltinType::U64:
+					return !is_negative;
+				case BuiltinType::I8:
+					return (!is_negative && val <= 127) || (is_negative && val <= 128);
+				case BuiltinType::I16:
+					return (!is_negative && val <= 32767) || (is_negative && val <= 32768);
+				case BuiltinType::I32:
+					return (!is_negative && val <= 2147483647ULL) || (is_negative && val <= 2147483648ULL);
+				case BuiltinType::I64:
+					if (!is_negative)
+						return val <= 9223372036854775807ULL;
+					return val <= 9223372036854775808ULL;
+				default:
+					return false;
+				}
 			}
+
 			return false;
 		} catch (...) {
 			return false;
