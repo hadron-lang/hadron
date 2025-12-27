@@ -17,17 +17,13 @@ namespace hadron::frontend {
 		global_scope_->define_type("i16", types.i16);
 		global_scope_->define_type("i32", types.i32);
 		global_scope_->define_type("i64", types.i64);
-		global_scope_->define_type("i128", types.i128);
 		global_scope_->define_type("u8", types.u8);
 		global_scope_->define_type("u16", types.u16);
 		global_scope_->define_type("u32", types.u32);
 		global_scope_->define_type("u64", types.u64);
-		global_scope_->define_type("u128", types.u128);
 		global_scope_->define_type("f32", types.f32);
 		global_scope_->define_type("f64", types.f64);
-		global_scope_->define_type("f128", types.f128);
 		global_scope_->define_type("bool", types.bool_);
-		global_scope_->define_type("str", types.str);
 		global_scope_->define_type("void", types.void_);
 	}
 
@@ -220,7 +216,7 @@ namespace hadron::frontend {
 					if (e.value.type == TokenType::Number)
 						return types.i32;
 					if (e.value.type == TokenType::String)
-						return types.str;
+						return Type{PointerType{std::make_shared<Type>(types.u8)}};
 					if (e.value.type == TokenType::KwFalse || e.value.type == TokenType::KwTrue)
 						return types.bool_;
 					return std::nullopt;
