@@ -28,8 +28,10 @@ namespace hadron::backend {
 		std::map<std::string, llvm::AllocaInst *> named_values_;
 		std::vector<LoopContext> loops_;
 		std::unordered_map<std::string, std::unordered_map<std::string, u32>> struct_field_indices_;
+		llvm::Value *overflow_flag_{nullptr};
 
 		void gen_stmt(const frontend::Stmt &stmt);
+		void save_overflow_flag(llvm::Value *flag);
 
 		llvm::Value *gen_expr(const frontend::Expr &expr);
 

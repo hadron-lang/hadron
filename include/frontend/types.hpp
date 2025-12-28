@@ -42,10 +42,13 @@ namespace hadron::frontend {
 
 	struct PointerType {
 		std::shared_ptr<Type> inner;
+		bool nullable = true;
 	};
 
 	struct SliceType {
 		std::shared_ptr<Type> inner;
+		size_t size = 0;
+		bool nullable = true;
 	};
 
 	struct StructType {

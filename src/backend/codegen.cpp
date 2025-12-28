@@ -2,6 +2,7 @@
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
@@ -18,6 +19,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils.h>
+#include <variant>
 
 #include "backend/codegen.hpp"
 #include "frontend/utils.hpp"
@@ -107,7 +109,7 @@ namespace hadron::backend {
 		const auto features = "";
 
 		const llvm::TargetOptions options;
-		constexpr auto rm = std::optional<llvm::Reloc::Model>();
+		constexpr auto rm = llvm::Reloc::PIC_;
 		const std::unique_ptr<llvm::TargetMachine> targetMachine(
 			target->createTargetMachine(targetTriple, cpu, features, options, rm)
 		);
@@ -173,8 +175,10 @@ namespace hadron::backend {
 
 					function->addFnAttr(llvm::Attribute::AlwaysInline);
 
-					llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(*context_, "entry", function);
-					builder_->SetInsertPoint(entryBlock);
+					if (!s.is_extern) {
+						llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(*context_, "entry", function);
+						builder_->SetInsertPoint(entryBlock);
+					}
 
 					unsigned idx = 0;
 					for (auto &arg : function->args()) {
@@ -200,7 +204,8 @@ namespace hadron::backend {
 						return;
 					}
 
-					fpm_->run(*function);
+					if (!s.is_extern)
+						fpm_->run(*function);
 				},
 				[&](const frontend::StructDecl &s) {
 					TRACE("Gen Struct: " << s.name.text);
@@ -437,6 +442,24 @@ namespace hadron::backend {
 						return llvm::ConstantInt::get(*context_, llvm::APInt(1, 1));
 					if (e.value.type == frontend::TokenType::KwFalse)
 						return llvm::ConstantInt::get(*context_, llvm::APInt(1, 0));
+					if (e.value.type == frontend::TokenType::String) {
+						std::string str = std::string(e.value.text);
+
+						llvm::Constant *data = llvm::ConstantDataArray::getString(*context_, str, true);
+
+						llvm::GlobalVariable *gv = new llvm::GlobalVariable(
+							*module_, data->getType(), true, llvm::GlobalValue::PrivateLinkage, data, ".str"
+						);
+
+						gv->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+						gv->setAlignment(llvm::Align(1));
+
+						llvm::Constant *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*context_), 0);
+
+						llvm::Value *strPtr =
+							builder_->CreateInBoundsGEP(gv->getValueType(), gv, {zero, zero}, "strptr");
+						return strPtr;
+					}
 					return nullptr;
 				},
 				[&](const frontend::VariableExpr &e) -> llvm::Value * {
@@ -678,9 +701,12 @@ namespace hadron::backend {
 					if (!L || !R)
 						return nullptr;
 
+					auto *ltype = L->getType();
+					auto *rtype = R->getType();
+
 					switch (e.op.type) {
 					case frontend::TokenType::Plus:
-						if (L->getType()->isPointerTy() && R->getType()->isIntegerTy()) {
+						if (ltype->isPointerTy() && rtype->isIntegerTy()) {
 							if (!e.left->type_cache ||
 								!std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind))
 								return nullptr;
@@ -688,7 +714,8 @@ namespace hadron::backend {
 								get_llvm_type(*std::get<frontend::PointerType>(e.left->type_cache->kind).inner);
 							return builder_->CreateGEP(elmTy, L, R, "ptr_add");
 						}
-						if (L->getType()->isIntegerTy() && R->getType()->isPointerTy()) {
+
+						else if (ltype->isIntegerTy() && rtype->isPointerTy()) {
 							if (!e.right->type_cache ||
 								!std::holds_alternative<frontend::PointerType>(e.right->type_cache->kind))
 								return nullptr;
@@ -696,9 +723,23 @@ namespace hadron::backend {
 								get_llvm_type(*std::get<frontend::PointerType>(e.right->type_cache->kind).inner);
 							return builder_->CreateGEP(elmTy, R, L, "ptr_add");
 						}
-						return builder_->CreateAdd(L, R, "addtmp");
+
+						// integer + integer (overflow)
+						else if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+
+							llvm::Function *sadd = llvm::Intrinsic::getOrInsertDeclaration(
+								module_.get(), llvm::Intrinsic::sadd_with_overflow, {L->getType()}
+							);
+							llvm::Value *res = builder_->CreateCall(sadd, {L, R}, "add_with_overflow");
+							llvm::Value *val = builder_->CreateExtractValue(res, 0, "sum");			  // result
+							llvm::Value *overflow = builder_->CreateExtractValue(res, 1, "overflow"); // i1 flag
+							save_overflow_flag(overflow); // store somewhere the current op’s overflow
+							return val;
+						}
+
+						return nullptr; // type error
 					case frontend::TokenType::Minus:
-						if (L->getType()->isPointerTy() && R->getType()->isIntegerTy()) {
+						if (ltype->isPointerTy() && rtype->isIntegerTy()) {
 							if (!e.left->type_cache ||
 								!std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind))
 								return nullptr;
@@ -706,11 +747,38 @@ namespace hadron::backend {
 								get_llvm_type(*std::get<frontend::PointerType>(e.left->type_cache->kind).inner);
 							return builder_->CreateGEP(elmTy, L, builder_->CreateNeg(R), "ptr_sub");
 						}
-						return builder_->CreateSub(L, R, "subtmp");
+
+						else if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+							llvm::Function *ssub = llvm::Intrinsic::getOrInsertDeclaration(
+								module_.get(), llvm::Intrinsic::ssub_with_overflow, {L->getType()}
+							);
+							llvm::Value *res = builder_->CreateCall(ssub, {L, R}, "sub_with_overflow");
+							llvm::Value *val = builder_->CreateExtractValue(res, 0, "diff");
+							llvm::Value *overflow = builder_->CreateExtractValue(res, 1, "overflow");
+							save_overflow_flag(overflow);
+							return val;
+						}
+
+						return nullptr; // type error
 					case frontend::TokenType::Star:
-						return builder_->CreateMul(L, R, "multmp");
-					case frontend::TokenType::Slash:
+						if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+							llvm::Function *smul = llvm::Intrinsic::getOrInsertDeclaration(
+								module_.get(), llvm::Intrinsic::smul_with_overflow, {L->getType()}
+							);
+							llvm::Value *res = builder_->CreateCall(smul, {L, R}, "mul_with_overflow");
+							llvm::Value *val = builder_->CreateExtractValue(res, 0, "prod");
+							llvm::Value *overflow = builder_->CreateExtractValue(res, 1, "overflow");
+							save_overflow_flag(overflow);
+							return val;
+						}
+						return nullptr; // type error
+					case frontend::TokenType::Slash: {
+						// For division, check R != 0 to prevent SIGFPE
+						llvm::Value *isZero =
+							builder_->CreateICmpEQ(R, llvm::ConstantInt::get(R->getType(), 0), "div0");
+						save_overflow_flag(isZero); // treat divide-by-zero as "failed"
 						return builder_->CreateSDiv(L, R, "divtmp");
+					}
 					case frontend::TokenType::EqEq:
 						return builder_->CreateICmpEQ(L, R, "eqtmp");
 					case frontend::TokenType::BangEq:
@@ -759,10 +827,7 @@ namespace hadron::backend {
 						argsV.push_back(argVal);
 					}
 
-					if (calleeF->getReturnType()->isVoidTy())
-						return builder_->CreateCall(calleeF, argsV);
-
-					return builder_->CreateCall(calleeF, argsV, "calltmp");
+					return calleeF->getReturnType()->isVoidTy() ? nullptr : builder_->CreateCall(calleeF, argsV);
 				},
 				[&](const frontend::SizeOfExpr &e) -> llvm::Value * {
 					llvm::Type *llvmType = get_llvm_type(e.type);
@@ -808,6 +873,46 @@ namespace hadron::backend {
 						return nullptr;
 					return builder_->CreateLoad(get_llvm_type(*expr.type_cache), ptr, "array_val");
 				},
+				[&](const frontend::ElseExpr &e) -> llvm::Value * {
+					llvm::Value *mainVal = gen_expr(*e.expr);
+
+					llvm::Function *func = builder_->GetInsertBlock()->getParent();
+
+					llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*context_, "merge", func);
+
+					if (!overflow_flag_)
+						return nullptr;
+
+					if (std::holds_alternative<std::unique_ptr<frontend::Expr>>(e.else_variant)) {
+						llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
+
+						builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
+
+						builder_->SetInsertPoint(elseBB);
+						llvm::Value *elseVal = gen_expr(*std::get<std::unique_ptr<frontend::Expr>>(e.else_variant));
+						builder_->CreateBr(mergeBB);
+
+						builder_->SetInsertPoint(mergeBB);
+						llvm::PHINode *phi = builder_->CreatePHI(mainVal->getType(), 2, "elsetmp");
+						phi->addIncoming(mainVal, builder_->GetInsertBlock()->getPrevNode());
+						phi->addIncoming(elseVal, elseBB);
+						return phi;
+					} else {
+						// Block else: generate side-effect statements
+						llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
+						builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
+
+						builder_->SetInsertPoint(elseBB);
+						for (auto &stmt : std::get<std::vector<frontend::Stmt>>(e.else_variant)) {
+							gen_stmt(stmt);
+						}
+						builder_->CreateBr(mergeBB);
+
+						builder_->SetInsertPoint(mergeBB);
+						return mainVal;
+					}
+				},
+
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
 			expr.kind
@@ -890,6 +995,10 @@ namespace hadron::backend {
 		);
 	}
 
+	void CodeGenerator::save_overflow_flag(llvm::Value *flag) {
+		overflow_flag_ = flag;
+	}
+
 	llvm::Type *CodeGenerator::get_llvm_type(const frontend::Type &type) const {
 		if (std::holds_alternative<frontend::BuiltinType>(type.kind)) {
 			switch (std::get<frontend::BuiltinType>(type.kind)) {
@@ -929,8 +1038,18 @@ namespace hadron::backend {
 				return llvm::Type::getInt32Ty(*context_);
 			if (name == "i64" || name == "u64" || name == "usize")
 				return llvm::Type::getInt64Ty(*context_);
+			if (name == "u8")
+				return llvm::Type::getInt8Ty(*context_);
+			if (name == "u16")
+				return llvm::Type::getInt16Ty(*context_);
+			if (name == "u32")
+				return llvm::Type::getInt32Ty(*context_);
+			if (name == "u64" || name == "usize")
+				return llvm::Type::getInt64Ty(*context_);
 			if (name == "bool")
 				return llvm::Type::getInt1Ty(*context_);
+			if (name == "byte")
+				return llvm::Type::getInt8Ty(*context_);
 			if (name == "void")
 				return llvm::Type::getVoidTy(*context_);
 			if (name == "f32")

@@ -21,7 +21,7 @@ namespace hadron::frontend {
 		global_scope_->define_type("u16", types.u16);
 		global_scope_->define_type("u32", types.u32);
 		global_scope_->define_type("u64", types.u64);
-		global_scope_->define_type("usize", types.u64);
+		global_scope_->define_type("usize", types.u64); // todo: fix for 32-bit architectures
 		global_scope_->define_type("f32", types.f32);
 		global_scope_->define_type("f64", types.f64);
 		global_scope_->define_type("bool", types.bool_);
@@ -555,12 +555,12 @@ namespace hadron::frontend {
 		}
 
 		if (const auto pa = std::get_if<PointerType>(&a.kind)) {
-			const auto [inner] = std::get<PointerType>(b.kind);
+			const auto inner = std::get<PointerType>(b.kind).inner;
 			return are_types_equal(*pa->inner, *inner);
 		}
 
 		if (const auto sa = std::get_if<SliceType>(&a.kind)) {
-			const auto [inner] = std::get<SliceType>(b.kind);
+			const auto inner = std::get<SliceType>(b.kind).inner;
 			return are_types_equal(*sa->inner, *inner);
 		}
 

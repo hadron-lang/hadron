@@ -19,7 +19,8 @@ namespace hadron::frontend {
 				[](const GetExpr &e) -> const Token & { return e.name; },
 				[](const SizeOfExpr &e) -> const Token & { return e.keyword; },
 				[](const StructInitExpr &e) -> const Token & { return e.l_brace; },
-				[](const ArrayAccessExpr &e) -> const Token & { return e.r_bracket; }
+				[](const ArrayAccessExpr &e) -> const Token & { return e.r_bracket; },
+				[](const ElseExpr &e) -> const Token & { return e.keyword; }
 			},
 			kind
 		);

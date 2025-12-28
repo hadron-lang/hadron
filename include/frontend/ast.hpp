@@ -90,6 +90,12 @@ namespace hadron::frontend {
 		Token r_bracket;
 	};
 
+	struct ElseExpr {
+		std::unique_ptr<Expr> expr;
+		std::variant<std::unique_ptr<Expr>, std::vector<Stmt>> else_variant;
+		Token keyword;
+	};
+
 	struct Expr {
 		using Kind = std::variant<
 			LiteralExpr,
@@ -102,7 +108,8 @@ namespace hadron::frontend {
 			GetExpr,
 			SizeOfExpr,
 			StructInitExpr,
-			ArrayAccessExpr>;
+			ArrayAccessExpr,
+			ElseExpr>;
 		Kind kind;
 
 		mutable std::optional<Type> type_cache;

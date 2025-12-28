@@ -166,7 +166,22 @@ namespace hadron::frontend {
 	}
 
 	Expr Parser::expression() {
-		return assignment();
+		Expr expr = assignment();
+
+		if (!match({TokenType::KwElse}))
+			return expr;
+		const Token kw = previous();
+		if (check(TokenType::LBrace)) {
+			// block-style else
+			consume(TokenType::LBrace, "Expect '{' after 'else'");
+			std::vector<Stmt> else_stmts = block();
+			return Expr{ElseExpr{std::make_unique<Expr>(std::move(expr)), std::move(else_stmts), kw}, {}};
+		}
+		// single-expression else
+		Expr else_expr = expression();
+		return Expr{
+			ElseExpr{std::make_unique<Expr>(std::move(expr)), std::make_unique<Expr>(std::move(else_expr)), kw}, {}
+		};
 	}
 
 	Expr Parser::equality() {
