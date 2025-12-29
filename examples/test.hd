@@ -1,0 +1,8 @@
+module main;
+
+fx main() i32 {
+    val x: u8 = 10;
+    val y: u8 = 32;
+    val res: u8 = x + y;
+    return res;
+}
