@@ -84,9 +84,7 @@ namespace hadron::frontend {
 					Type inner = resolve_type(*s.inner);
 					return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
 				},
-				[&](const FunctionType &f) -> Type {
-					return Type{f}; // f is already resolved
-				},
+				[&](const FunctionType &f) -> Type { return Type{f}; },
 				[&](const ErrorType &e) -> Type { return types.error; }
 			},
 			t.kind
@@ -138,9 +136,9 @@ namespace hadron::frontend {
 							}
 
 							if (litToken && is_integer_type(finalType)) {
-								if (check_int_literal(std::string(litToken->text), finalType, isNeg)) {
+								if (check_int_literal(std::string(litToken->text), finalType, isNeg))
 									allowed = true;
-								} else {
+								else {
 									error(*litToken, "Integer literal out of range for type.");
 									return;
 								}
@@ -181,9 +179,16 @@ namespace hadron::frontend {
 						if (!has_value)
 							error(s.keyword, "Non-void function should return a value.");
 						else {
-							if (const auto valType = analyze_expr(*s.value);
-								valType && !are_types_equal(*valType, resolve_type(*current_func_->return_type)))
-								error(s.keyword, "Return value type does not match function return type.");
+							const auto valType = analyze_expr(*s.value);
+							if (!valType)
+								return;
+
+							if (const auto expectedType = resolve_type(*current_func_->return_type);
+								!are_types_equal(*valType, expectedType)) {
+								if (is_integer_type(*valType) && is_integer_type(expectedType)) {
+								} else
+									error(s.keyword, "Return value type does not match function return type.");
+							}
 						}
 					}
 				},
@@ -280,7 +285,8 @@ namespace hadron::frontend {
 						if (!argType)
 							return std::nullopt;
 						if (!are_types_equal(*argType, params[i])) {
-							error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
+							if (!(is_integer_type(*argType) && is_integer_type(params[i])))
+								error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
 						}
 					}
 					if (return_type)
@@ -337,11 +343,11 @@ namespace hadron::frontend {
 			if (std::holds_alternative<BuiltinType>(type.kind)) {
 				switch (std::get<BuiltinType>(type.kind)) {
 				case BuiltinType::U8:
-					return !is_negative && val <= UINT8_MAX;
+					return !is_negative && val <= 255;
 				case BuiltinType::U16:
-					return !is_negative && val <= UINT16_MAX;
+					return !is_negative && val <= 65535;
 				case BuiltinType::U32:
-					return !is_negative && val <= UINT32_MAX;
+					return !is_negative && val <= 4294967295ULL;
 				case BuiltinType::U64:
 					return !is_negative;
 				case BuiltinType::I8:
@@ -351,9 +357,7 @@ namespace hadron::frontend {
 				case BuiltinType::I32:
 					return (!is_negative && val <= 2147483647ULL) || (is_negative && val <= 2147483648ULL);
 				case BuiltinType::I64:
-					if (!is_negative)
-						return val <= 9223372036854775807ULL;
-					return val <= 9223372036854775808ULL;
+					return is_negative ? (val <= 9223372036854775808ULL) : (val <= 9223372036854775807ULL);
 				default:
 					return false;
 				}
