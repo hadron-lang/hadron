@@ -1,5 +1,6 @@
 #include "frontend/semantic.hpp"
 #include <iostream>
+#include <memory>
 #include <variant>
 
 namespace hadron::frontend {

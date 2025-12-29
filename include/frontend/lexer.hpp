@@ -7,6 +7,7 @@
 
 namespace hadron::frontend {
 	class Lexer {
+		std::vector<std::string> string_pool;
 		std::string_view source_;
 		usize cursor_ = 0;
 		usize start_ = 0;
@@ -18,6 +19,7 @@ namespace hadron::frontend {
 		bool match(char expected);
 
 		Token make_token(TokenType type, usize length) const;
+		Token make_string_token(std::string text, const usize length);
 		Token make_error_token(std::string_view message) const;
 		void skip_whitespace();
 		Token parse_identifier();

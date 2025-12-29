@@ -1,5 +1,6 @@
 #include "frontend/lexer.hpp"
 
+#include <cstring>
 #include <format>
 #include <unordered_map>
 
@@ -101,6 +102,13 @@ namespace hadron::frontend {
 		return Token{text, {line_, col_ - static_cast<u32>(length), start_}, type, {}};
 	}
 
+	Token Lexer::make_string_token(std::string value, const usize length) {
+		string_pool.push_back(std::move(value));
+		std::string &stored = string_pool.back();
+
+		return Token{std::string_view(stored), {line_, col_ - static_cast<u32>(length), start_}, TokenType::String, {}};
+	}
+
 	Token Lexer::make_error_token(const std::string_view message) const {
 		return Token{message, {line_, col_, start_}, TokenType::Error, {}};
 	}
@@ -158,14 +166,59 @@ namespace hadron::frontend {
 	}
 
 	Token Lexer::parse_string() {
-		while (peek() != '"' && peek() != '\0')
+		std::string value;
+		value.reserve(16);
+
+		while (true) {
+			char c = peek();
+
+			if (c == '\0')
+				return make_error_token("Unterminated string literal");
+
+			if (c == '"') {
+				advance();
+				break;
+			}
+
+			if (c == '\\') {
+				advance();
+				char e = peek();
+
+				if (e == '\0')
+					return make_error_token("Unterminated escape sequence");
+
+				switch (e) {
+				case 'n':
+					value.push_back('\n');
+					break;
+				case 't':
+					value.push_back('\t');
+					break;
+				case 'r':
+					value.push_back('\r');
+					break;
+				case '"':
+					value.push_back('"');
+					break;
+				case '\\':
+					value.push_back('\\');
+					break;
+				case '0':
+					value.push_back('\0');
+					break;
+				default:
+					return make_error_token("Invalid escape sequence");
+				}
+
+				advance();
+				continue;
+			}
+
+			value.push_back(c);
 			advance();
+		}
 
-		if (peek() == '\0')
-			return make_error_token("Unterminated String literal");
-
-		advance();
-		return make_token(TokenType::String, cursor_ - start_);
+		return make_string_token(std::move(value), cursor_ - start_);
 	}
 
 	std::vector<Token> Lexer::tokenize() {

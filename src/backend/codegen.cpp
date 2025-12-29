@@ -875,17 +875,18 @@ namespace hadron::backend {
 				},
 				[&](const frontend::ElseExpr &e) -> llvm::Value * {
 					llvm::Value *mainVal = gen_expr(*e.expr);
+					llvm::BasicBlock *mainBB = builder_->GetInsertBlock();
+					llvm::Function *func = mainBB->getParent();
 
-					llvm::Function *func = builder_->GetInsertBlock()->getParent();
-
+					llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
 					llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*context_, "merge", func);
+
+					builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
 
 					if (!overflow_flag_)
 						return nullptr;
 
 					if (std::holds_alternative<std::unique_ptr<frontend::Expr>>(e.else_variant)) {
-						llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
-
 						builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
 
 						builder_->SetInsertPoint(elseBB);
@@ -894,25 +895,19 @@ namespace hadron::backend {
 
 						builder_->SetInsertPoint(mergeBB);
 						llvm::PHINode *phi = builder_->CreatePHI(mainVal->getType(), 2, "elsetmp");
-						phi->addIncoming(mainVal, builder_->GetInsertBlock()->getPrevNode());
+						phi->addIncoming(mainVal, mainBB);
 						phi->addIncoming(elseVal, elseBB);
 						return phi;
 					} else {
-						// Block else: generate side-effect statements
-						llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
-						builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
-
 						builder_->SetInsertPoint(elseBB);
 						for (auto &stmt : std::get<std::vector<frontend::Stmt>>(e.else_variant)) {
 							gen_stmt(stmt);
 						}
 						builder_->CreateBr(mergeBB);
-
 						builder_->SetInsertPoint(mergeBB);
 						return mainVal;
 					}
 				},
-
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
 			expr.kind

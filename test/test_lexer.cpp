@@ -71,7 +71,7 @@ TEST(LexerTest, DetectsUnterminatedString) {
 	EXPECT_EQ(tokens.back().type, TokenType::Eof);
 	const auto &errorToken = tokens[tokens.size() - 2];
 	EXPECT_EQ(errorToken.type, TokenType::Error);
-	EXPECT_EQ(errorToken.text, "Unterminated String literal");
+	EXPECT_EQ(errorToken.text, "Unterminated string literal");
 }
 
 TEST(LexerTest, DetectsUnknownCharacters) {
