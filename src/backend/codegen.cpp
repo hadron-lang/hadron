@@ -155,23 +155,37 @@ namespace hadron::backend {
 					llvm::Value *initVal;
 					if (s.initializer)
 						initVal = gen_expr(*s.initializer);
-					else {
-						// todo: default value by type
+					else
 						initVal = llvm::ConstantInt::get(*context_, llvm::APInt(32, 0));
+
+					if (!initVal) {
+						std::cerr << "CodeGen Error: Failed to generate initializer for '" << std::string(s.name.text)
+								  << "'\n";
+						return;
+					}
+
+					llvm::Type *varType = initVal->getType();
+					if (s.type_annotation) {
+						varType = get_llvm_type(*s.type_annotation);
+						if (initVal->getType() != varType)
+							initVal = builder_->CreateIntCast(initVal, varType, false);
 					}
 					llvm::Function *func = builder_->GetInsertBlock()->getParent();
-					llvm::AllocaInst *alloca =
-						create_entry_block_alloca(func, std::string(s.name.text), initVal->getType());
+					llvm::AllocaInst *alloca = create_entry_block_alloca(func, std::string(s.name.text), varType);
 					builder_->CreateStore(initVal, alloca);
 					named_values_[std::string(s.name.text)] = alloca;
 				},
 				[&](const frontend::ReturnStmt &s) {
 					if (s.value) {
 						llvm::Value *retVal = gen_expr(*s.value);
+						if (!retVal)
+							return;
+						const llvm::Function *func = builder_->GetInsertBlock()->getParent();
+						if (llvm::Type *expectedType = func->getReturnType(); retVal->getType() != expectedType)
+							retVal = builder_->CreateIntCast(retVal, expectedType, true);
 						builder_->CreateRet(retVal);
-					} else {
+					} else
 						builder_->CreateRetVoid();
-					}
 				},
 				[&](const frontend::IfStmt &s) {
 					llvm::Value *condV = gen_expr(s.condition);
@@ -300,10 +314,8 @@ namespace hadron::backend {
 		return std::visit(
 			overloaded{
 				[&](const frontend::LiteralExpr &e) -> llvm::Value * {
-					if (e.value.type == frontend::TokenType::Number) {
-						const int val = std::stoi(std::string(e.value.text));
-						return llvm::ConstantInt::get(*context_, llvm::APInt(32, static_cast<uint32_t>(val), true));
-					}
+					if (e.value.type == frontend::TokenType::Number)
+						return llvm::ConstantInt::get(*context_, llvm::APInt(64, e.value.text, 10));
 					if (e.value.type == frontend::TokenType::KwTrue)
 						return llvm::ConstantInt::get(*context_, llvm::APInt(1, 1));
 					if (e.value.type == frontend::TokenType::KwFalse)
@@ -319,6 +331,20 @@ namespace hadron::backend {
 					}
 					return builder_->CreateLoad(alloca->getAllocatedType(), alloca, name.c_str());
 				},
+				[&](const frontend::UnaryExpr &e) -> llvm::Value * {
+					llvm::Value *operand = gen_expr(*e.right);
+					if (!operand)
+						return nullptr;
+					switch (e.op.type) {
+					case frontend::TokenType::Minus:
+						return builder_->CreateNeg(operand, "negtmp");
+					case frontend::TokenType::Bang:
+						return builder_->CreateNot(operand, "nottmp");
+					default:
+						return nullptr;
+					}
+				},
+				[&](const frontend::GroupingExpr &e) -> llvm::Value * { return gen_expr(*e.expression); },
 				[&](const frontend::BinaryExpr &e) -> llvm::Value * {
 					if (e.op.type == frontend::TokenType::Eq) {
 						if (!std::holds_alternative<frontend::VariableExpr>(e.left->kind)) {
@@ -338,6 +364,8 @@ namespace hadron::backend {
 							return nullptr;
 						}
 
+						if (val->getType() != alloca->getAllocatedType())
+							val = builder_->CreateIntCast(val, alloca->getAllocatedType(), false);
 						builder_->CreateStore(val, alloca);
 						return val;
 					}
@@ -387,10 +415,12 @@ namespace hadron::backend {
 					}
 
 					std::vector<llvm::Value *> argsV;
-					for (const auto &arg : e.args) {
-						llvm::Value *argVal = gen_expr(arg);
+					for (u32 i = 0; i < e.args.size(); ++i) {
+						llvm::Value *argVal = gen_expr(e.args[i]);
 						if (!argVal)
 							return nullptr;
+						if (llvm::Type *expectedType = calleeF->getArg(i)->getType(); argVal->getType() != expectedType)
+							argVal = builder_->CreateIntCast(argVal, expectedType, true);
 						argsV.push_back(argVal);
 					}
 
@@ -410,22 +440,14 @@ namespace hadron::backend {
 			const auto &[name_path, generic_args] = std::get<frontend::NamedType>(type.kind);
 			const std::string_view name = name_path[0].text;
 
-			if (name == "i8")
+			if (name == "i8" || name == "u8")
 				return llvm::Type::getInt8Ty(*context_);
-			if (name == "i16")
+			if (name == "i16" || name == "u16")
 				return llvm::Type::getInt16Ty(*context_);
-			if (name == "i32")
+			if (name == "i32" || name == "u32")
 				return llvm::Type::getInt32Ty(*context_);
-			if (name == "i64")
+			if (name == "i64" || name == "u64" || name == "usize")
 				return llvm::Type::getInt64Ty(*context_);
-			/*if (name == "u8")
-				return llvm::Type::getInt8Ty(*context_);
-			if (name == "u16")
-				return llvm::Type::getInt16Ty(*context_);
-			if (name == "u32")
-				return llvm::Type::getInt32Ty(*context_);
-			if (name == "u64")
-				return llvm::Type::getInt64Ty(*context_);*/
 			if (name == "bool")
 				return llvm::Type::getInt1Ty(*context_);
 			if (name == "byte")
