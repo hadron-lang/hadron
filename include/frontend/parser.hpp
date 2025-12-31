@@ -39,7 +39,7 @@ namespace hadron::frontend {
 		Stmt declaration();
 		Stmt var_declaration();
 		std::vector<Param> parse_params();
-		Stmt function_declaration();
+		Stmt function_declaration(bool is_extern = false);
 		Stmt statement();
 		Stmt expression_statement();
 		Stmt if_statement();

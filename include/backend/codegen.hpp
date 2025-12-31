@@ -39,6 +39,8 @@ namespace hadron::backend {
 		static llvm::AllocaInst *
 		create_entry_block_alloca(llvm::Function *func, llvm::StringRef varName, llvm::Type *type);
 
+		static std::string resolve_escapes(const std::string_view src);
+
 	public:
 		explicit CodeGenerator(const frontend::CompilationUnit &unit);
 

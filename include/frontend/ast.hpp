@@ -103,6 +103,9 @@ namespace hadron::frontend {
 		std::vector<Param> params;
 		std::optional<Type> return_type;
 		std::vector<Stmt> body;
+		bool is_extern;
+		bool is_variadic;
+		char padding[6];
 	};
 
 	struct StructField {

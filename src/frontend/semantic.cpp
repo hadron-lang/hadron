@@ -37,7 +37,7 @@ namespace hadron::frontend {
 					paramTypes.push_back(resolve_type(type));
 				const auto ret =
 					std::make_shared<Type>(func.return_type ? resolve_type(*func.return_type) : types.void_);
-				if (Type fnType = Type{FunctionType{std::move(paramTypes), ret}};
+				if (Type fnType = Type{FunctionType{std::move(paramTypes), ret, func.is_variadic, {}}};
 					!current_scope_->define_value(std::string(func.name.text), fnType))
 					error(func.name, "Function '" + std::string(func.name.text) + "' already declared.");
 			}
@@ -60,7 +60,7 @@ namespace hadron::frontend {
 	void Semantic::error(const Token &token, const std::string &message) {
 		char *err = static_cast<char *>(__builtin_alloca(256));
 		snprintf(err, 256, "%d:%d Semantic Error: %s", token.location.line, token.location.column, message.c_str());
-		errors_.push_back(std::string(err));
+		errors_.emplace_back(err);
 	}
 
 	Type Semantic::resolve_type(const Type &t) {
@@ -157,6 +157,8 @@ namespace hadron::frontend {
 						error(s.name, "Variable '" + std::string(s.name.text) + "' already declared in this scope.");
 				},
 				[&](const FunctionDecl &s) {
+					if (s.is_extern)
+						return;
 					const FunctionDecl *prev_func = current_func_;
 					current_func_ = &s;
 					enter_scope();
@@ -271,16 +273,25 @@ namespace hadron::frontend {
 						error(e.paren, "Can only call functions and classes.");
 						return std::nullopt;
 					}
-					const auto &[params, return_type] = std::get<FunctionType>(calleeType->kind);
-					if (e.args.size() != params.size()) {
-						error(
-							e.paren,
-							"Expected " + std::to_string(params.size()) + " arguments but got " +
-								std::to_string(e.args.size()) + "."
-						);
-						return std::nullopt;
+					const auto &[params, return_type, is_variadic, p] = std::get<FunctionType>(calleeType->kind);
+
+					if (is_variadic) {
+						if (e.args.size() < params.size()) {
+							error(e.paren, "Expected at least " + std::to_string(params.size()) + " arguments.");
+							return std::nullopt;
+						}
+					} else {
+						if (e.args.size() != params.size()) {
+							error(
+								e.paren,
+								"Expected " + std::to_string(params.size()) + " arguments but got " +
+									std::to_string(e.args.size()) + "."
+							);
+							return std::nullopt;
+						}
 					}
-					for (size_t i = 0; i < e.args.size(); ++i) {
+
+					for (size_t i = 0; i < params.size(); ++i) {
 						auto argType = analyze_expr(e.args[i]);
 						if (!argType)
 							return std::nullopt;
@@ -289,6 +300,12 @@ namespace hadron::frontend {
 								error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
 						}
 					}
+
+					for (size_t i = params.size(); i < e.args.size(); ++i) {
+						if (!analyze_expr(e.args[i]))
+							return std::nullopt;
+					}
+
 					if (return_type)
 						return *return_type;
 					return types.void_;
@@ -310,7 +327,7 @@ namespace hadron::frontend {
 			return *ba == std::get<BuiltinType>(b.kind);
 
 		if (const auto fa = std::get_if<FunctionType>(&a.kind)) {
-			const auto &[params, return_type] = std::get<FunctionType>(b.kind);
+			const auto &[params, return_type, is_variadic, p] = std::get<FunctionType>(b.kind);
 			if (fa->params.size() != params.size())
 				return false;
 			for (size_t i = 0; i < fa->params.size(); ++i)
@@ -319,7 +336,27 @@ namespace hadron::frontend {
 			return are_types_equal(*fa->return_type, *return_type);
 		}
 
-		// todo: Pointer, Slice
+		if (const auto pa = std::get_if<PointerType>(&a.kind)) {
+			const auto [inner] = std::get<PointerType>(b.kind);
+			return are_types_equal(*pa->inner, *inner);
+		}
+
+		if (const auto sa = std::get_if<SliceType>(&a.kind)) {
+			const auto [inner] = std::get<SliceType>(b.kind);
+			return are_types_equal(*sa->inner, *inner);
+		}
+
+		if (const auto na = std::get_if<NamedType>(&a.kind)) {
+			const auto [name_path, generic_args] = std::get<NamedType>(b.kind);
+			// todo: Simplistic comparison of names for now
+			if (na->name_path.size() != name_path.size())
+				return false;
+			for (size_t i = 0; i < na->name_path.size(); ++i) {
+				if (na->name_path[i].text != name_path[i].text)
+					return false;
+			}
+			return true;
+		}
 
 		return false;
 	}

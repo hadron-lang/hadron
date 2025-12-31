@@ -36,6 +36,8 @@ namespace hadron::frontend {
 	struct FunctionType {
 		std::vector<Type> params;
 		std::shared_ptr<Type> return_type;
+		bool is_variadic;
+		char padding[7];
 	};
 
 	struct PointerType {

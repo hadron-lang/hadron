@@ -124,11 +124,11 @@ int main(const int argc, char **argv) {
 		code_generator.emit_object(obj_file);
 
 		run_linker(obj_file, output_file);
-		std::cout << "Build successful:" << output_file << "\n";
+		std::cout << "Build successful: " << output_file << "\n";
 
 		if (dump_asm) {
 			std::print("\n--- Assembly ---\n");
-			std::string cmd = "objdump -d -M intel " + obj_file;
+			std::string cmd = "objdump -d -M intel " + output_file;
 			std::system(cmd.c_str());
 		}
 

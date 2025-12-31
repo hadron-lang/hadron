@@ -99,8 +99,14 @@ namespace hadron::frontend {
 
 	Stmt Parser::top_level_declaration() {
 		// todo: add 'public' and 'private'
+		if (check(TokenType::KwExtern)) {
+			advance();
+			if (match({TokenType::KwFx}))
+				return function_declaration(true);
+			throw std::runtime_error("Expect 'fx' after 'extern'.");
+		}
 		if (match({TokenType::KwFx}))
-			return function_declaration();
+			return function_declaration(false);
 		if (check(TokenType::KwStruct))
 			return struct_declaration();
 		if (check(TokenType::KwEnum))
@@ -258,8 +264,14 @@ namespace hadron::frontend {
 	}
 
 	Stmt Parser::declaration() {
+		if (check(TokenType::KwExtern)) {
+			advance();
+			if (match({TokenType::KwFx}))
+				return function_declaration(true);
+			throw std::runtime_error("Expect 'fx' after 'extern'.");
+		}
 		if (match({TokenType::KwFx}))
-			return function_declaration();
+			return function_declaration(false);
 		if (match({TokenType::KwVal, TokenType::KwVar}))
 			return var_declaration();
 		return statement();
@@ -294,21 +306,44 @@ namespace hadron::frontend {
 		return params;
 	}
 
-	Stmt Parser::function_declaration() {
+	Stmt Parser::function_declaration(const bool is_extern) {
 		const Token name = consume(TokenType::Identifier, "Expect function name.");
 
 		consume(TokenType::LParen, "Expect '(' after function name.");
-		std::vector<Param> params = parse_params();
+
+		std::vector<Param> params;
+		bool is_variadic = false;
+		if (!check(TokenType::RParen)) {
+			do {
+				if (check(TokenType::Ellipsis)) {
+					consume(TokenType::Ellipsis, "Expect '...'");
+					is_variadic = true;
+					break;
+				}
+
+				const Token paramName = consume(TokenType::Identifier, "Expect parameter name.");
+				consume(TokenType::Colon, "Expect ':' after parameter name.");
+				Type type = parse_type();
+				params.push_back(Param{paramName, std::move(type)});
+			} while (match({TokenType::Comma}));
+		}
 		consume(TokenType::RParen, "Expect ')' after parameters.");
 
 		std::optional<Type> return_type;
 		if (check(TokenType::Identifier))
 			return_type = parse_type();
 
-		consume(TokenType::LBrace, "Expect '{' before function body.");
-		std::vector<Stmt> body = block();
+		std::vector<Stmt> body;
+		if (is_extern)
+			consume(TokenType::Semicolon, "Expect ';' after extern function declaration.");
+		else {
+			consume(TokenType::LBrace, "Expect '{' before function body.");
+			body = block();
+		}
 
-		return Stmt{FunctionDecl{name, std::move(params), std::move(return_type), std::move(body)}};
+		return Stmt{
+			FunctionDecl{name, std::move(params), std::move(return_type), std::move(body), is_extern, is_variadic, {}}
+		};
 	}
 
 	Stmt Parser::statement() {

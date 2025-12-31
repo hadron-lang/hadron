@@ -120,11 +120,20 @@ namespace hadron::backend {
 					llvm::Type *returnType =
 						s.return_type ? get_llvm_type(*s.return_type) : llvm::Type::getVoidTy(*context_);
 
-					llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
-					const auto linkage =
-						(s.name.text == "main") ? llvm::Function::ExternalLinkage : llvm::Function::InternalLinkage;
+					llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, s.is_variadic);
+
+					llvm::GlobalValue::LinkageTypes linkage;
+					if (s.name.text == "main" || s.is_extern)
+						linkage = llvm::Function::ExternalLinkage;
+					else
+						linkage = llvm::Function::InternalLinkage;
+
 					llvm::Function *function =
 						llvm::Function::Create(funcType, linkage, std::string(s.name.text), module_.get());
+
+					if (s.is_extern)
+						return;
+
 					function->addFnAttr(llvm::Attribute::AlwaysInline);
 
 					llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(*context_, "entry", function);
@@ -267,7 +276,7 @@ namespace hadron::backend {
 					builder_->SetInsertPoint(deadBB);
 				},
 				[&](const frontend::ForStmt &s) {
-					// TODO: clean management of scopes
+					// tods: clean management of scopes
 					if (s.initializer)
 						gen_stmt(*s.initializer);
 					llvm::Function *func = builder_->GetInsertBlock()->getParent();
@@ -317,6 +326,11 @@ namespace hadron::backend {
 				[&](const frontend::LiteralExpr &e) -> llvm::Value * {
 					if (e.value.type == frontend::TokenType::Number)
 						return llvm::ConstantInt::get(*context_, llvm::APInt(64, e.value.text, 10));
+					if (e.value.type == frontend::TokenType::String) {
+						const std::string_view raw = e.value.text.substr(1, e.value.text.size() - 2);
+						const std::string content = resolve_escapes(raw);
+						return builder_->CreateGlobalString(content);
+					}
 					if (e.value.type == frontend::TokenType::KwTrue)
 						return llvm::ConstantInt::get(*context_, llvm::APInt(1, 1));
 					if (e.value.type == frontend::TokenType::KwFalse)
@@ -410,18 +424,29 @@ namespace hadron::backend {
 						return nullptr;
 					}
 
-					if (e.args.size() != calleeF->arg_size()) {
-						std::cerr << "CodeGen Error: Incorrect # arguments passed.\n";
-						return nullptr;
+					if (calleeF->isVarArg()) {
+						if (e.args.size() < calleeF->arg_size()) {
+							std::cerr << "CodeGen Error: Variadic call missing fixed args.\n";
+							return nullptr;
+						}
+					} else {
+						if (e.args.size() != calleeF->arg_size()) {
+							std::cerr << "CodeGen Error: Argument count mismatch.\n";
+							return nullptr;
+						}
 					}
 
 					std::vector<llvm::Value *> argsV;
-					for (u32 i = 0; i < e.args.size(); ++i) {
+					for (unsigned int i = 0; i < e.args.size(); ++i) {
 						llvm::Value *argVal = gen_expr(e.args[i]);
 						if (!argVal)
 							return nullptr;
-						if (llvm::Type *expectedType = calleeF->getArg(i)->getType(); argVal->getType() != expectedType)
-							argVal = builder_->CreateIntCast(argVal, expectedType, true);
+						if (i < calleeF->arg_size()) {
+							if (llvm::Type *expectedType = calleeF->getArg(i)->getType();
+								argVal->getType() != expectedType) {
+								argVal = builder_->CreateIntCast(argVal, expectedType, true);
+							}
+						}
 						argsV.push_back(argVal);
 					}
 
@@ -461,7 +486,9 @@ namespace hadron::backend {
 				return llvm::Type::getDoubleTy(*context_);
 		}
 
-		// todo: default void for avoid the crash (to change)
+		if (std::holds_alternative<frontend::PointerType>(type.kind))
+			return llvm::PointerType::get(*context_, 0);
+
 		return llvm::Type::getVoidTy(*context_);
 	}
 
@@ -479,5 +506,40 @@ namespace hadron::backend {
 	CodeGenerator::create_entry_block_alloca(llvm::Function *func, const llvm::StringRef varName, llvm::Type *type) {
 		llvm::IRBuilder<> tmpBuilder(&func->getEntryBlock(), func->getEntryBlock().begin());
 		return tmpBuilder.CreateAlloca(type, nullptr, varName);
+	}
+
+	std::string CodeGenerator::resolve_escapes(const std::string_view src) {
+		std::string dest;
+		dest.reserve(src.size());
+		for (size_t i = 0; i < src.size(); ++i) {
+			if (src[i] == '\\' && i + 1 < src.size()) {
+				switch (src[i + 1]) {
+				case 'n':
+					dest += '\n';
+					break;
+				case 'r':
+					dest += '\r';
+					break;
+				case 't':
+					dest += '\t';
+					break;
+				case '\\':
+					dest += '\\';
+					break;
+				case '"':
+					dest += '"';
+					break;
+				case '0':
+					dest += '\0';
+					break;
+				default:
+					dest += src[i];
+					continue;
+				}
+				i++;
+			} else
+				dest += src[i];
+		}
+		return dest;
 	}
 } // namespace hadron::backend

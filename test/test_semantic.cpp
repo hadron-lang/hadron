@@ -1,5 +1,4 @@
 #include "gtest/gtest.h"
-#include <gtest/gtest.h>
 
 #include "frontend/lexer.hpp"
 #include "frontend/parser.hpp"
@@ -7,7 +6,7 @@
 
 using namespace hadron::frontend;
 
-Semantic get_semantic_analysis(std::string_view source) {
+Semantic get_semantic_analysis(const std::string_view source) {
 	Lexer lexer(source);
 	auto tokens = lexer.tokenize();
 	Parser parser(std::move(tokens));
@@ -84,9 +83,9 @@ TEST(SemanticTest, DetectsMissingReturnValue) {
 }
 
 TEST(SemanticTest, DetectsTypeMismatchInVarDecl) {
-	const auto sem = get_semantic_analysis("module test; fx main() { val x: i8 = 123; } ");
+	const auto sem = get_semantic_analysis("module test; fx main() { val x: i8 = 129; } ");
 	ASSERT_FALSE(sem.errors().empty());
-	EXPECT_TRUE(has_error(sem.errors(), "Type mismatch in variable declaration"));
+	EXPECT_TRUE(has_error(sem.errors(), "Integer literal out of range") || has_error(sem.errors(), "Type mismatch"));
 }
 
 TEST(SemanticTest, DetectsTypeMismatchInReturn) {

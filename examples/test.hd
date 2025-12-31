@@ -1,8 +1,14 @@
 module main;
 
+extern fx printf(fmt: ptr<u8>, ...) i32;
+
 fx main() i32 {
-    val x: u8 = 10;
-    val y: u8 = 32;
-    val res: u8 = x + y;
-    return res;
+	val a: u8 = 10;
+	val b: u8 = 32;
+	val res: u8 = a + b;
+	printf("Hello from FFI! Number: %d\n", res);
+	val x: i32 = 10;
+	val y: i32 = 20;
+	printf("Math: %d + %d = %d\n", x, y, x + y);
+	return 0;
 }

@@ -65,7 +65,7 @@ TEST(ParserTest, HandlesFunctionDeclaration) {
 	const CompilationUnit unit = parse_source("module test; fx add(a: i32, b: i32) i32 { return a + b; }");
 	ASSERT_EQ(unit.declarations.size(), 1);
 
-	const auto &[name, params, retType, body] = get_node<FunctionDecl>(unit.declarations[0]);
+	const auto &[name, params, retType, body, is_ext, is_var, p] = get_node<FunctionDecl>(unit.declarations[0]);
 
 	EXPECT_EQ(name.text, "add");
 	EXPECT_EQ(params.size(), 2);
@@ -78,7 +78,7 @@ TEST(ParserTest, HandlesFunctionDeclaration) {
 
 TEST(ParserTest, HandlesVoidFunction) {
 	const CompilationUnit unit = parse_source("module test; fx log() { }");
-	const auto &[name, params, retType, body] = get_node<FunctionDecl>(unit.declarations[0]);
+	const auto &[name, params, retType, body, is_ext, is_var, p] = get_node<FunctionDecl>(unit.declarations[0]);
 	EXPECT_FALSE(retType.has_value());
 }
 

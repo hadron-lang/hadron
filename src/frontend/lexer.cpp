@@ -37,7 +37,8 @@ namespace hadron::frontend {
 		{"private", TokenType::KwPriv},
 		{"try", TokenType::KwTry},
 		{"catch", TokenType::KwCatch},
-		{"throw", TokenType::KwThrow}
+		{"throw", TokenType::KwThrow},
+		{"extern", TokenType::KwExtern}
 	};
 
 	std::string Token::to_string() const {
@@ -210,7 +211,11 @@ namespace hadron::frontend {
 					type = TokenType::Comma;
 					break;
 				case '.':
-					type = TokenType::Dot;
+					if (match('.') && match('.')) {
+						type = TokenType::Ellipsis;
+						len = 3;
+					} else
+						type = TokenType::Dot;
 					break;
 				case ';':
 					type = TokenType::Semicolon;

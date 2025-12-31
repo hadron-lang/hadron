@@ -46,6 +46,7 @@ namespace hadron::frontend {
 		KwTry,
 		KwCatch,
 		KwThrow,
+		KwExtern,
 
 		Plus,
 		Minus,
@@ -74,6 +75,7 @@ namespace hadron::frontend {
 		RBracket,
 		Comma,
 		Dot,
+		Ellipsis,
 		Colon,
 		Semicolon
 	};
