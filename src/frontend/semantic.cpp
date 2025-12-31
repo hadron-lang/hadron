@@ -263,7 +263,38 @@ namespace hadron::frontend {
 						return types.bool_;
 					return left;
 				},
-				[&](const UnaryExpr &e) -> std::optional<Type> { return analyze_expr(*e.right); },
+				[&](const UnaryExpr &e) -> std::optional<Type> {
+					const auto rightType = analyze_expr(*e.right);
+					if (!rightType)
+						return std::nullopt;
+
+					switch (e.op.type) {
+					case TokenType::Minus:
+						// todo: Add float check
+						if (!is_integer_type(*rightType)) {
+							error(e.op, "Operand must be a number.");
+							return std::nullopt;
+						}
+						return *rightType;
+					case TokenType::Bang:
+						if (!are_types_equal(*rightType, types.bool_)) {
+							error(e.op, "Operand must be a boolean.");
+							return std::nullopt;
+						}
+						return types.bool_;
+					case TokenType::Ampersand:
+						// todo: Verify that e.right is an L-value (variable, field, etc)
+						return Type{PointerType{std::make_shared<Type>(*rightType)}};
+					case TokenType::Star:
+						if (!std::holds_alternative<PointerType>(rightType->kind)) {
+							error(e.op, "Cannot dereference non-pointer type.");
+							return std::nullopt;
+						}
+						return *std::get<PointerType>(rightType->kind).inner;
+					default:
+						return std::nullopt;
+					}
+				},
 				[&](const GroupingExpr &e) -> std::optional<Type> { return analyze_expr(*e.expression); },
 				[&](const CallExpr &e) -> std::optional<Type> {
 					const auto calleeType = analyze_expr(*e.callee);

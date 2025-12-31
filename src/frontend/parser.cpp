@@ -211,7 +211,7 @@ namespace hadron::frontend {
 	}
 
 	Expr Parser::unary() {
-		if (match({TokenType::Bang, TokenType::Minus})) {
+		if (match({TokenType::Bang, TokenType::Minus, TokenType::Ampersand, TokenType::Star})) {
 			const Token op = previous();
 			Expr right = unary();
 			return Expr{UnaryExpr{op, std::make_unique<Expr>(std::move(right))}};

@@ -279,6 +279,12 @@ namespace hadron::frontend {
 					} else
 						type = TokenType::Gt;
 					break;
+				case '&':
+					type = TokenType::Ampersand;
+					break;
+				case '|':
+					type = TokenType::Pipe;
+					break;
 				default:
 					tokens.push_back(make_error_token("Unexpected character"));
 					continue;
