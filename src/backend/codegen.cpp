@@ -23,7 +23,10 @@ namespace hadron::backend {
 	CodeGenerator::CodeGenerator(const frontend::CompilationUnit &unit) : unit_(unit) {
 		context_ = std::make_unique<llvm::LLVMContext>();
 		builder_ = std::make_unique<llvm::IRBuilder<>>(*context_);
-		module_ = std::make_unique<llvm::Module>(unit_.module.name_path[0].text, *context_);
+		std::string moduleName = "hadron_module";
+		if (!unit.module.name_path.empty())
+			moduleName = std::string(unit_.module.name_path[0].text);
+		module_ = std::make_unique<llvm::Module>(moduleName, *context_);
 		initialize_passes();
 	}
 
@@ -49,8 +52,6 @@ namespace hadron::backend {
 		mpm.addPass(llvm::createModuleToFunctionPassAdaptor(llvm::SimplifyCFGPass()));
 
 		mpm.run(*module_, mam);
-
-		module_->print(llvm::outs(), nullptr);
 	}
 
 	void CodeGenerator::emit_object(const std::string &filename) const {

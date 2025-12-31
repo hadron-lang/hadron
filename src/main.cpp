@@ -116,14 +116,9 @@ int main(const int argc, char **argv) {
 		}
 
 		hadron::backend::CodeGenerator code_generator(unit);
-
-		if (emit_ir) {
-			std::print("\n--- LLVM IR ---\n");
-			code_generator.generate();
-		} else {
-			// todo: change
-			code_generator.generate();
-		}
+		code_generator.generate();
+		if (emit_ir)
+			code_generator.get_module()->print(llvm::outs(), nullptr);
 
 		std::string obj_file = output_file + ".o";
 		code_generator.emit_object(obj_file);
