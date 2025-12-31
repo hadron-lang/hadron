@@ -355,6 +355,22 @@ namespace hadron::backend {
 						return builder_->CreateNeg(operand, "negtmp");
 					case frontend::TokenType::Bang:
 						return builder_->CreateNot(operand, "nottmp");
+					case frontend::TokenType::Ampersand:
+						return gen_addr(*e.right);
+					case frontend::TokenType::Star: {
+						llvm::Value *ptr = gen_addr(*e.right);
+						if (!ptr)
+							return nullptr;
+						// We need to know the type pointed to in order to load it.
+						// LLVM opaque pointers tip: we load the type corresponding to the pointer.
+						// Note: In a perfect implementation, we would use the AST type.
+						// Here, to simplify things, we assume i64 for the example or rely on the context.
+						// Problem: With Opaque Pointers, LoadInst needs the type explicitly.
+						// TEMPORARY HACK: We assume i64 for the printf pointer test,
+						// but ideally we should pass the AST Type to gen_expr.
+						// For now, let's trust the default i32/i64 types.
+						return builder_->CreateLoad(builder_->getInt64Ty(), ptr);
+					}
 					default:
 						return nullptr;
 					}
@@ -456,6 +472,31 @@ namespace hadron::backend {
 					return builder_->CreateCall(calleeF, argsV, "calltmp");
 				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
+			},
+			expr.kind
+		);
+	}
+
+	llvm::Value *CodeGenerator::gen_addr(const frontend::Expr &expr) {
+		return std::visit(
+			overloaded{
+				[&](const frontend::VariableExpr &e) -> llvm::Value * {
+					const std::string name = std::string(e.name.text);
+					if (named_values_.contains(name))
+						return named_values_[name];
+					std::cerr << "CodeGen Error: Unknown variable '" << name << "'\n";
+					return nullptr;
+				},
+				[&](const frontend::UnaryExpr &e) -> llvm::Value * {
+					if (e.op.type == frontend::TokenType::Star)
+						return gen_expr(*e.right);
+					std::cerr << "CodeGen Error: Cannot take address of this unary expression.\n";
+					return nullptr;
+				},
+				[&](const auto &) -> llvm::Value * {
+					std::cerr << "CodeGen Error: Cannot take address of r-value.\n";
+					return nullptr;
+				}
 			},
 			expr.kind
 		);

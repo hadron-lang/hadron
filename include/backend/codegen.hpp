@@ -32,6 +32,8 @@ namespace hadron::backend {
 
 		llvm::Value *gen_expr(const frontend::Expr &expr);
 
+		llvm::Value *gen_addr(const frontend::Expr &expr);
+
 		llvm::Type *get_llvm_type(const frontend::Type &type) const;
 
 		void initialize_passes();
