@@ -1,5 +1,3 @@
-#include "backend/codegen.hpp"
-
 #include <iostream>
 
 #include <llvm/IR/LegacyPassManager.h>
@@ -19,20 +17,56 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils.h>
 
+#include "backend/codegen.hpp"
+#include "frontend/utils.hpp"
+
+#ifndef NDEBUG
+#define TRACE(x) std::cout << "[CodeGen] " << x << "\n"
+#else // #ifndef NDEBUG
+#define TRACE(x)
+#endif // #ifndef NDEBUG else
+
 namespace hadron::backend {
 	CodeGenerator::CodeGenerator(const frontend::CompilationUnit &unit) : unit_(unit) {
 		context_ = std::make_unique<llvm::LLVMContext>();
 		builder_ = std::make_unique<llvm::IRBuilder<>>(*context_);
+
 		std::string moduleName = "hadron_module";
 		if (!unit.module.name_path.empty())
 			moduleName = std::string(unit_.module.name_path[0].text);
 		module_ = std::make_unique<llvm::Module>(moduleName, *context_);
+
+		std::string error;
+		const auto targetTripleStr = llvm::sys::getDefaultTargetTriple();
+		const llvm::Triple targetTriple(targetTripleStr);
+
+		if (const auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error)) {
+			const auto cpu = "generic";
+			const auto features = "";
+			const llvm::TargetOptions options;
+			constexpr auto rm = std::optional<llvm::Reloc::Model>();
+			const auto targetMachine = std::unique_ptr<llvm::TargetMachine>(
+				target->createTargetMachine(targetTriple, cpu, features, options, rm)
+			);
+
+			module_->setDataLayout(targetMachine->createDataLayout());
+			module_->setTargetTriple(targetTriple);
+		} else {
+			std::cerr << "CodeGen Warning: Failed to lookup target: " << error << "\n";
+		}
+
 		initialize_passes();
 	}
 
 	void CodeGenerator::generate() {
+		TRACE("Starting generation...");
 		for (const auto &decl : unit_.declarations)
 			gen_stmt(decl);
+
+		TRACE("Verification step...");
+		if (llvm::verifyModule(*module_, &llvm::errs())) {
+			std::cerr << "Module verification failed!\n";
+		}
 
 		llvm::LoopAnalysisManager lam;
 		llvm::FunctionAnalysisManager fam;
@@ -52,6 +86,7 @@ namespace hadron::backend {
 		mpm.addPass(llvm::createModuleToFunctionPassAdaptor(llvm::SimplifyCFGPass()));
 
 		mpm.run(*module_, mam);
+		TRACE("Generation finished.");
 	}
 
 	void CodeGenerator::emit_object(const std::string &filename) const {
@@ -90,16 +125,14 @@ namespace hadron::backend {
 		}
 
 		llvm::legacy::PassManager pass;
-		if (constexpr auto fileType = llvm::CodeGenFileType::ObjectFile;
-			targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType)) {
+		if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, llvm::CodeGenFileType::ObjectFile)) {
 			std::cerr << "TargetMachine can't emit a file of this type\n";
 			return;
 		}
 
 		pass.run(*module_);
 		dest.flush();
-
-		std::cout << "Wrote object file to " << filename << "\n";
+		TRACE("Object file emitted to " << filename);
 	}
 
 	template <class... Ts> struct overloaded : Ts... {
@@ -111,6 +144,7 @@ namespace hadron::backend {
 		std::visit(
 			overloaded{
 				[&](const frontend::FunctionDecl &s) {
+					TRACE("Gen Function: " << s.name.text);
 					named_values_.clear();
 					loops_.clear();
 					std::vector<llvm::Type *> paramTypes;
@@ -128,8 +162,9 @@ namespace hadron::backend {
 					else
 						linkage = llvm::Function::InternalLinkage;
 
-					llvm::Function *function =
-						llvm::Function::Create(funcType, linkage, std::string(s.name.text), module_.get());
+					llvm::Function *function = module_->getFunction(std::string(s.name.text));
+					if (!function)
+						function = llvm::Function::Create(funcType, linkage, std::string(s.name.text), module_.get());
 
 					if (s.is_extern)
 						return;
@@ -141,11 +176,13 @@ namespace hadron::backend {
 
 					unsigned idx = 0;
 					for (auto &arg : function->args()) {
-						std::string argName = std::string(s.params[idx].name.text);
-						arg.setName(argName);
-						llvm::AllocaInst *alloca = create_entry_block_alloca(function, argName, arg.getType());
-						builder_->CreateStore(&arg, alloca);
-						named_values_[argName] = alloca;
+						if (idx < s.params.size()) {
+							std::string argName = std::string(s.params[idx].name.text);
+							arg.setName(argName);
+							llvm::AllocaInst *alloca = create_entry_block_alloca(function, argName, arg.getType());
+							builder_->CreateStore(&arg, alloca);
+							named_values_[argName] = alloca;
+						}
 						idx++;
 					}
 
@@ -161,7 +198,25 @@ namespace hadron::backend {
 
 					fpm_->run(*function);
 				},
+				[&](const frontend::StructDecl &s) {
+					TRACE("Gen Struct: " << s.name.text);
+					const std::string structName = std::string(s.name.text);
+					llvm::StructType *structType = llvm::StructType::getTypeByName(*context_, "struct." + structName);
+					if (!structType)
+						structType = llvm::StructType::create(*context_, "struct." + structName);
+
+					u32 index = 0;
+					std::vector<llvm::Type *> fieldTypes;
+					for (const auto &[name, type] : s.fields) {
+						struct_field_indices_[structName][std::string(name.text)] = index++;
+						fieldTypes.push_back(get_llvm_type(type));
+					}
+
+					if (structType->isOpaque())
+						structType->setBody(fieldTypes, false);
+				},
 				[&](const frontend::VarDeclStmt &s) {
+					TRACE("Gen Var: " << s.name.text);
 					llvm::Value *initVal;
 					if (s.initializer)
 						initVal = gen_expr(*s.initializer);
@@ -191,8 +246,10 @@ namespace hadron::backend {
 						if (!retVal)
 							return;
 						const llvm::Function *func = builder_->GetInsertBlock()->getParent();
-						if (llvm::Type *expectedType = func->getReturnType(); retVal->getType() != expectedType)
-							retVal = builder_->CreateIntCast(retVal, expectedType, true);
+						if (llvm::Type *expectedType = func->getReturnType(); retVal->getType() != expectedType) {
+							if (retVal->getType()->isIntegerTy() && expectedType->isIntegerTy())
+								retVal = builder_->CreateIntCast(retVal, expectedType, true);
+						}
 						builder_->CreateRet(retVal);
 					} else
 						builder_->CreateRetVoid();
@@ -355,11 +412,13 @@ namespace hadron::backend {
 						return operand ? builder_->CreateNot(operand, "nottmp") : nullptr;
 					}
 					case frontend::TokenType::Ampersand: {
+						if (std::holds_alternative<frontend::GetExpr>(e.right->kind))
+							return gen_addr(*e.right);
 						if (std::holds_alternative<frontend::VariableExpr>(e.right->kind)) {
 							const auto &[name] = std::get<frontend::VariableExpr>(e.right->kind);
 							return named_values_[std::string(name.text)];
 						}
-						std::cerr << "CodeGen Error: Can only take address of variables.\n";
+						std::cerr << "CodeGen Error: Can only take address of variables or fields.\n";
 						return nullptr;
 					}
 					case frontend::TokenType::Star: {
@@ -372,6 +431,12 @@ namespace hadron::backend {
 					default:
 						return nullptr;
 					}
+				},
+				[&](const frontend::GetExpr &e) -> llvm::Value * {
+					llvm::Value *ptr = gen_addr(expr);
+					if (!ptr || !expr.type_cache)
+						return nullptr;
+					return builder_->CreateLoad(get_llvm_type(*expr.type_cache), ptr, "fld");
 				},
 				[&](const frontend::CastExpr &e) -> llvm::Value * {
 					llvm::Value *val = gen_expr(*e.expr);
@@ -404,26 +469,39 @@ namespace hadron::backend {
 				[&](const frontend::GroupingExpr &e) -> llvm::Value * { return gen_expr(*e.expression); },
 				[&](const frontend::BinaryExpr &e) -> llvm::Value * {
 					if (e.op.type == frontend::TokenType::Eq) {
-						if (!std::holds_alternative<frontend::VariableExpr>(e.left->kind)) {
-							std::cerr << "CodeGen Error: LHS of assignment must be a variable.\n";
+						llvm::Value *ptr = nullptr;
+						llvm::Type *destType = nullptr;
+
+						if (std::holds_alternative<frontend::VariableExpr>(e.left->kind)) {
+							const auto &[name] = std::get<frontend::VariableExpr>(e.left->kind);
+							if (const auto alloca = named_values_[std::string(name.text)]) {
+								ptr = alloca;
+								destType = alloca->getAllocatedType();
+							}
+						} else if (std::holds_alternative<frontend::GetExpr>(e.left->kind)) {
+							ptr = gen_addr(*e.left);
+							if (ptr && e.left->type_cache)
+								destType = get_llvm_type(*e.left->type_cache);
+						}
+
+						if (!ptr || !destType) {
+							std::cerr << "CodeGen Error: LHS of assignment must be a variable or field.\n";
 							return nullptr;
 						}
 
-						const auto &[name] = std::get<frontend::VariableExpr>(e.left->kind);
-						const std::string t_name = std::string(name.text);
 						llvm::Value *val = gen_expr(*e.right);
 						if (!val)
 							return nullptr;
 
-						llvm::AllocaInst *alloca = named_values_[t_name];
-						if (!alloca) {
-							std::cerr << "CodeGen Error: Unknown variable " << t_name << "\n";
-							return nullptr;
+						if (val->getType() != destType) {
+							if (destType->isPointerTy() && val->getType()->isIntegerTy())
+								val = builder_->CreateIntToPtr(val, destType);
+							else if (destType->isPointerTy() && val->getType()->isPointerTy())
+								val = builder_->CreateBitCast(val, destType);
+							else if (destType->isIntegerTy() && val->getType()->isIntegerTy())
+								val = builder_->CreateIntCast(val, destType, false);
 						}
-
-						if (val->getType() != alloca->getAllocatedType())
-							val = builder_->CreateIntCast(val, alloca->getAllocatedType(), false);
-						builder_->CreateStore(val, alloca);
+						builder_->CreateStore(val, ptr);
 						return val;
 					}
 
@@ -453,28 +531,15 @@ namespace hadron::backend {
 				},
 				[&](const frontend::CallExpr &e) -> llvm::Value * {
 					if (!std::holds_alternative<frontend::VariableExpr>(e.callee->kind)) {
-						std::cerr << "CodeGen Error: Only direct function calls are supported for now.\n";
+						std::cerr << "CodeGen Error: Only direct calls supported.\n";
 						return nullptr;
 					}
 
 					const auto &[name] = std::get<frontend::VariableExpr>(e.callee->kind);
-					const std::string funcName = std::string(name.text);
-					llvm::Function *calleeF = module_->getFunction(funcName);
+					llvm::Function *calleeF = module_->getFunction(name.text);
 					if (!calleeF) {
-						std::cerr << "CodeGen Error: Unknown function referenced '" << funcName << "'.\n";
+						std::cerr << "CodeGen Error: Unknown function.\n";
 						return nullptr;
-					}
-
-					if (calleeF->isVarArg()) {
-						if (e.args.size() < calleeF->arg_size()) {
-							std::cerr << "CodeGen Error: Variadic call missing fixed args.\n";
-							return nullptr;
-						}
-					} else {
-						if (e.args.size() != calleeF->arg_size()) {
-							std::cerr << "CodeGen Error: Argument count mismatch.\n";
-							return nullptr;
-						}
 					}
 
 					std::vector<llvm::Value *> argsV;
@@ -486,9 +551,9 @@ namespace hadron::backend {
 						if (i < calleeF->arg_size()) {
 							if (llvm::Type *expectedType = calleeF->getArg(i)->getType();
 								argVal->getType() != expectedType) {
-								if (expectedType->isPointerTy() && argVal->getType()->isPointerTy()) {
+								if (expectedType->isPointerTy() && argVal->getType()->isPointerTy())
 									argVal = builder_->CreateBitCast(argVal, expectedType);
-								} else if (expectedType->isIntegerTy() && argVal->getType()->isIntegerTy()) {
+								else {
 									argVal = builder_->CreateIntCast(argVal, expectedType, true);
 								}
 							}
@@ -520,10 +585,37 @@ namespace hadron::backend {
 				[&](const frontend::UnaryExpr &e) -> llvm::Value * {
 					if (e.op.type == frontend::TokenType::Star)
 						return gen_expr(*e.right);
-					std::cerr << "CodeGen Error: Cannot take address of this unary expression.\n";
+					std::cerr << "CodeGen Error: Cannot take address.\n";
 					return nullptr;
 				},
-				[&](const auto &) -> llvm::Value * {
+				[&](const frontend::GetExpr &e) -> llvm::Value * {
+					if (!e.object->type_cache)
+						return nullptr;
+					frontend::Type objType = *e.object->type_cache;
+					bool isPointer = false;
+					if (std::holds_alternative<frontend::PointerType>(objType.kind)) {
+						isPointer = true;
+						objType = *std::get<frontend::PointerType>(objType.kind).inner;
+					}
+
+					const std::string structName = frontend::get_type_name(objType);
+					const std::string fieldName = std::string(e.name.text);
+
+					if (!struct_field_indices_.contains(structName))
+						return nullptr;
+					const u32 fieldIndex = struct_field_indices_[structName][fieldName];
+
+					llvm::Value *basePtr = isPointer ? gen_expr(*e.object) : gen_addr(*e.object);
+					if (!basePtr)
+						return nullptr;
+
+					llvm::StructType *st = llvm::StructType::getTypeByName(*context_, "struct." + structName);
+					if (!st)
+						return nullptr;
+
+					return builder_->CreateStructGEP(st, basePtr, fieldIndex, "ptr_" + fieldName);
+				},
+				[](const auto &) -> llvm::Value * {
 					std::cerr << "CodeGen Error: Cannot take address of r-value.\n";
 					return nullptr;
 				}
@@ -533,11 +625,39 @@ namespace hadron::backend {
 	}
 
 	llvm::Type *CodeGenerator::get_llvm_type(const frontend::Type &type) const {
+		if (std::holds_alternative<frontend::BuiltinType>(type.kind)) {
+			switch (std::get<frontend::BuiltinType>(type.kind)) {
+			case frontend::BuiltinType::I8:
+			case frontend::BuiltinType::U8:
+			case frontend::BuiltinType::Byte:
+				return llvm::Type::getInt8Ty(*context_);
+			case frontend::BuiltinType::I16:
+			case frontend::BuiltinType::U16:
+				return llvm::Type::getInt16Ty(*context_);
+			case frontend::BuiltinType::I32:
+			case frontend::BuiltinType::U32:
+				return llvm::Type::getInt32Ty(*context_);
+			case frontend::BuiltinType::I64:
+			case frontend::BuiltinType::U64:
+				return llvm::Type::getInt64Ty(*context_);
+			case frontend::BuiltinType::Bool:
+				return llvm::Type::getInt1Ty(*context_);
+			case frontend::BuiltinType::F32:
+				return llvm::Type::getFloatTy(*context_);
+			case frontend::BuiltinType::F64:
+				return llvm::Type::getDoubleTy(*context_);
+			case frontend::BuiltinType::Void:
+				return llvm::Type::getVoidTy(*context_);
+			default:
+				return llvm::Type::getVoidTy(*context_);
+			}
+		}
+
 		if (std::holds_alternative<frontend::NamedType>(type.kind)) {
 			const auto &[name_path, generic_args] = std::get<frontend::NamedType>(type.kind);
 			const std::string_view name = name_path[0].text;
 
-			if (name == "i8" || name == "u8")
+			if (name == "i8" || name == "u8" || name == "byte")
 				return llvm::Type::getInt8Ty(*context_);
 			if (name == "i16" || name == "u16")
 				return llvm::Type::getInt16Ty(*context_);
@@ -545,8 +665,6 @@ namespace hadron::backend {
 				return llvm::Type::getInt32Ty(*context_);
 			if (name == "i64" || name == "u64" || name == "usize")
 				return llvm::Type::getInt64Ty(*context_);
-			if (name == "byte")
-				return llvm::Type::getInt8Ty(*context_);
 			if (name == "bool")
 				return llvm::Type::getInt1Ty(*context_);
 			if (name == "void")
@@ -555,6 +673,14 @@ namespace hadron::backend {
 				return llvm::Type::getFloatTy(*context_);
 			if (name == "f64")
 				return llvm::Type::getDoubleTy(*context_);
+			if (const auto st = llvm::StructType::getTypeByName(*context_, "struct." + std::string(name)))
+				return st;
+		}
+
+		if (std::holds_alternative<frontend::StructType>(type.kind)) {
+			const auto &[name, fields] = std::get<frontend::StructType>(type.kind);
+			if (const auto lst = llvm::StructType::getTypeByName(*context_, "struct." + name))
+				return lst;
 		}
 
 		if (std::holds_alternative<frontend::PointerType>(type.kind))

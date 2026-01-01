@@ -27,6 +27,7 @@ namespace hadron::backend {
 		std::unique_ptr<llvm::legacy::FunctionPassManager> fpm_;
 		std::map<std::string, llvm::AllocaInst *> named_values_;
 		std::vector<LoopContext> loops_;
+		std::unordered_map<std::string, std::unordered_map<std::string, u32>> struct_field_indices_;
 
 		void gen_stmt(const frontend::Stmt &stmt);
 
@@ -41,7 +42,7 @@ namespace hadron::backend {
 		static llvm::AllocaInst *
 		create_entry_block_alloca(llvm::Function *func, llvm::StringRef varName, llvm::Type *type);
 
-		static std::string resolve_escapes(const std::string_view src);
+		static std::string resolve_escapes(std::string_view src);
 
 	public:
 		explicit CodeGenerator(const frontend::CompilationUnit &unit);
