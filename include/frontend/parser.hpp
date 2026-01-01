@@ -31,6 +31,7 @@ namespace hadron::frontend {
 		Expr comparison();
 		Expr term();
 		Expr factor();
+		Expr cast();
 		Expr unary();
 		Expr call();
 		Expr finish_call(Expr callee);

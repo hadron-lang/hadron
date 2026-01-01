@@ -276,7 +276,6 @@ namespace hadron::backend {
 					builder_->SetInsertPoint(deadBB);
 				},
 				[&](const frontend::ForStmt &s) {
-					// tods: clean management of scopes
 					if (s.initializer)
 						gen_stmt(*s.initializer);
 					llvm::Function *func = builder_->GetInsertBlock()->getParent();
@@ -309,7 +308,6 @@ namespace hadron::backend {
 					builder_->SetInsertPoint(afterBB);
 				},
 				[&](const frontend::BlockStmt &s) {
-					// todo: manage scope (push/pop named_values_)
 					for (const auto &subStmt : s.statements)
 						gen_stmt(subStmt);
 				},
@@ -347,33 +345,61 @@ namespace hadron::backend {
 					return builder_->CreateLoad(alloca->getAllocatedType(), alloca, name.c_str());
 				},
 				[&](const frontend::UnaryExpr &e) -> llvm::Value * {
-					llvm::Value *operand = gen_expr(*e.right);
-					if (!operand)
-						return nullptr;
 					switch (e.op.type) {
-					case frontend::TokenType::Minus:
-						return builder_->CreateNeg(operand, "negtmp");
-					case frontend::TokenType::Bang:
-						return builder_->CreateNot(operand, "nottmp");
-					case frontend::TokenType::Ampersand:
-						return gen_addr(*e.right);
+					case frontend::TokenType::Minus: {
+						llvm::Value *operand = gen_expr(*e.right);
+						return operand ? builder_->CreateNeg(operand, "negtmp") : nullptr;
+					}
+					case frontend::TokenType::Bang: {
+						llvm::Value *operand = gen_expr(*e.right);
+						return operand ? builder_->CreateNot(operand, "nottmp") : nullptr;
+					}
+					case frontend::TokenType::Ampersand: {
+						if (std::holds_alternative<frontend::VariableExpr>(e.right->kind)) {
+							const auto &[name] = std::get<frontend::VariableExpr>(e.right->kind);
+							return named_values_[std::string(name.text)];
+						}
+						std::cerr << "CodeGen Error: Can only take address of variables.\n";
+						return nullptr;
+					}
 					case frontend::TokenType::Star: {
-						llvm::Value *ptr = gen_addr(*e.right);
+						llvm::Value *ptr = gen_expr(*e.right);
 						if (!ptr)
 							return nullptr;
-						// We need to know the type pointed to in order to load it.
-						// LLVM opaque pointers tip: we load the type corresponding to the pointer.
-						// Note: In a perfect implementation, we would use the AST type.
-						// Here, to simplify things, we assume i64 for the example or rely on the context.
-						// Problem: With Opaque Pointers, LoadInst needs the type explicitly.
-						// TEMPORARY HACK: We assume i64 for the printf pointer test,
-						// but ideally we should pass the AST Type to gen_expr.
-						// For now, let's trust the default i32/i64 types.
-						return builder_->CreateLoad(builder_->getInt64Ty(), ptr);
+						// todo: Use the actual pointed type via the AST when available
+						return builder_->CreateLoad(llvm::Type::getInt32Ty(*context_), ptr, "deref");
 					}
 					default:
 						return nullptr;
 					}
+				},
+				[&](const frontend::CastExpr &e) -> llvm::Value * {
+					llvm::Value *val = gen_expr(*e.expr);
+					if (!val)
+						return nullptr;
+
+					llvm::Type *destTy = get_llvm_type(e.target_type);
+					const llvm::Type *srcTy = val->getType();
+
+					if (srcTy == destTy)
+						return val;
+
+					if (srcTy->isPointerTy() && destTy->isPointerTy())
+						return builder_->CreateBitCast(val, destTy);
+
+					if (srcTy->isPointerTy() && destTy->isIntegerTy())
+						return builder_->CreatePtrToInt(val, destTy);
+
+					if (srcTy->isIntegerTy() && destTy->isPointerTy())
+						return builder_->CreateIntToPtr(val, destTy);
+
+					if (srcTy->isIntegerTy() && destTy->isIntegerTy()) {
+						if (srcTy->getIntegerBitWidth() > destTy->getIntegerBitWidth())
+							return builder_->CreateTrunc(val, destTy);
+						return builder_->CreateZExt(val, destTy);
+					}
+
+					return val;
 				},
 				[&](const frontend::GroupingExpr &e) -> llvm::Value * { return gen_expr(*e.expression); },
 				[&](const frontend::BinaryExpr &e) -> llvm::Value * {
@@ -421,7 +447,6 @@ namespace hadron::backend {
 						return builder_->CreateICmpSLT(L, R, "lttmp");
 					case frontend::TokenType::Gt:
 						return builder_->CreateICmpSGT(L, R, "gttmp");
-					// todo: add LtEq, GtEq, BangEq...
 					default:
 						return nullptr;
 					}
@@ -457,10 +482,15 @@ namespace hadron::backend {
 						llvm::Value *argVal = gen_expr(e.args[i]);
 						if (!argVal)
 							return nullptr;
+
 						if (i < calleeF->arg_size()) {
 							if (llvm::Type *expectedType = calleeF->getArg(i)->getType();
 								argVal->getType() != expectedType) {
-								argVal = builder_->CreateIntCast(argVal, expectedType, true);
+								if (expectedType->isPointerTy() && argVal->getType()->isPointerTy()) {
+									argVal = builder_->CreateBitCast(argVal, expectedType);
+								} else if (expectedType->isIntegerTy() && argVal->getType()->isIntegerTy()) {
+									argVal = builder_->CreateIntCast(argVal, expectedType, true);
+								}
 							}
 						}
 						argsV.push_back(argVal);
@@ -515,9 +545,9 @@ namespace hadron::backend {
 				return llvm::Type::getInt32Ty(*context_);
 			if (name == "i64" || name == "u64" || name == "usize")
 				return llvm::Type::getInt64Ty(*context_);
-			if (name == "bool")
-				return llvm::Type::getInt1Ty(*context_);
 			if (name == "byte")
+				return llvm::Type::getInt8Ty(*context_);
+			if (name == "bool")
 				return llvm::Type::getInt1Ty(*context_);
 			if (name == "void")
 				return llvm::Type::getVoidTy(*context_);

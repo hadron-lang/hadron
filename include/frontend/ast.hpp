@@ -48,6 +48,7 @@ namespace hadron::frontend {
 
 	struct GroupingExpr {
 		std::unique_ptr<Expr> expression;
+		Token paren;
 	};
 
 	struct CallExpr {
@@ -56,9 +57,17 @@ namespace hadron::frontend {
 		std::vector<Expr> args;
 	};
 
+	struct CastExpr {
+		std::unique_ptr<Expr> expr;
+		Token op;
+		Type target_type;
+	};
+
 	struct Expr {
-		using Kind = std::variant<LiteralExpr, VariableExpr, BinaryExpr, UnaryExpr, GroupingExpr, CallExpr>;
+		using Kind = std::variant<LiteralExpr, VariableExpr, BinaryExpr, UnaryExpr, GroupingExpr, CallExpr, CastExpr>;
 		Kind kind;
+
+		[[nodiscard]] const Token &get_token() const;
 	};
 
 	struct ExpressionStmt {

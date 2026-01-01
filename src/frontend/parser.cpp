@@ -3,6 +3,8 @@
 
 #include "frontend/parser.hpp"
 
+#include <algorithm>
+
 namespace hadron::frontend {
 	Parser::Parser(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
@@ -53,11 +55,9 @@ namespace hadron::frontend {
 	}
 
 	bool Parser::match(const std::vector<TokenType> &types) {
-		for (const TokenType type : types) {
-			if (check(type)) {
-				advance();
-				return true;
-			}
+		if (std::ranges::any_of(types, [this](const TokenType type) { return check(type); })) {
+			advance();
+			return true;
 		}
 		return false;
 	}
@@ -94,7 +94,7 @@ namespace hadron::frontend {
 		}
 
 		consume(TokenType::Semicolon, "Expect ';' after import.");
-		return ImportDecl{std::move(path), std::move(alias)};
+		return ImportDecl{std::move(path), alias};
 	}
 
 	Stmt Parser::top_level_declaration() {
@@ -200,12 +200,22 @@ namespace hadron::frontend {
 	}
 
 	Expr Parser::factor() {
-		Expr expr = unary();
+		Expr expr = cast();
 		while (match({TokenType::Slash, TokenType::Star, TokenType::Percent})) {
 			Token op = previous();
-			Expr right = unary();
+			Expr right = cast();
 			expr =
 				Expr{BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}};
+		}
+		return expr;
+	}
+
+	Expr Parser::cast() {
+		Expr expr = unary();
+		while (match({TokenType::KwAs})) {
+			Token op = previous();
+			Type type = parse_type();
+			expr = Expr{CastExpr{std::make_unique<Expr>(std::move(expr)), op, std::move(type)}};
 		}
 		return expr;
 	}
@@ -256,9 +266,10 @@ namespace hadron::frontend {
 		if (match({TokenType::Identifier}))
 			return Expr{VariableExpr{previous()}};
 		if (match({TokenType::LParen})) {
+			const Token paren = previous();
 			Expr expr = expression();
 			consume(TokenType::RParen, "Expect ')' after expression.");
-			return Expr{GroupingExpr{std::make_unique<Expr>(std::move(expr))}};
+			return Expr{GroupingExpr{std::make_unique<Expr>(std::move(expr)), paren}};
 		}
 		throw std::runtime_error("Expect expression.");
 	}

@@ -341,6 +341,26 @@ namespace hadron::frontend {
 						return *return_type;
 					return types.void_;
 				},
+				[&](const CastExpr &e) -> std::optional<Type> {
+					const auto sourceType = analyze_expr(*e.expr);
+					if (!sourceType)
+						return std::nullopt;
+
+					Type targetType = resolve_type(e.target_type);
+					if (std::holds_alternative<PointerType>(sourceType->kind) &&
+						std::holds_alternative<PointerType>(targetType.kind))
+						return targetType;
+
+					if (is_integer_type(*sourceType) && is_integer_type(targetType))
+						return targetType;
+
+					// todo: Check that targetType is usize/u64
+					if (std::holds_alternative<PointerType>(sourceType->kind) && is_integer_type(targetType))
+						return targetType;
+
+					error(e.expr->get_token(), "Invalid cast operation.");
+					return std::nullopt;
+				},
 				[](const auto &) -> std::optional<Type> { return std::nullopt; }
 			},
 			expr.kind
