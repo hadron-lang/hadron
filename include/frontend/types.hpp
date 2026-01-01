@@ -48,8 +48,13 @@ namespace hadron::frontend {
 		std::shared_ptr<Type> inner;
 	};
 
+	struct StructType {
+		std::string name;
+		std::vector<std::pair<std::string, Type>> fields;
+	};
+
 	struct Type {
-		using Kind = std::variant<BuiltinType, NamedType, PointerType, SliceType, FunctionType, ErrorType>;
+		using Kind = std::variant<BuiltinType, NamedType, PointerType, SliceType, FunctionType, ErrorType, StructType>;
 		Kind kind;
 	};
 

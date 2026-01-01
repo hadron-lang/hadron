@@ -41,6 +41,10 @@ namespace hadron::frontend {
 			return types_.emplace(name, TypeSymbol{name, type}).second;
 		}
 
+		void redefine_type(const std::string &name, const Type &type) {
+			types_[name] = TypeSymbol{name, type};
+		}
+
 		[[nodiscard]] std::optional<Type> resolve_type(const std::string &name) const {
 			if (auto it = types_.find(name); it != types_.end())
 				return it->second.type;

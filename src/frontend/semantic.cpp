@@ -30,7 +30,23 @@ namespace hadron::frontend {
 
 	bool Semantic::analyze() {
 		for (const auto &[kind] : unit_.declarations) {
-			if (std::holds_alternative<FunctionDecl>(kind)) {
+			if (std::holds_alternative<StructDecl>(kind)) {
+				const auto &[name, fields] = std::get<StructDecl>(kind);
+				if (Type structTy = Type{StructType{std::string(name.text), {}}};
+					!current_scope_->define_type(std::string(name.text), structTy))
+					error(name, "Type '" + std::string(name.text) + "' already declared.");
+			}
+		}
+
+		for (const auto &[kind] : unit_.declarations) {
+			if (std::holds_alternative<StructDecl>(kind)) {
+				const auto &s = std::get<StructDecl>(kind);
+				std::vector<std::pair<std::string, Type>> fields;
+				for (const auto &[name, type] : s.fields)
+					fields.emplace_back(name.text, resolve_type(type));
+				Type structTy = Type{StructType{std::string(s.name.text), std::move(fields)}};
+				current_scope_->redefine_type(std::string(s.name.text), structTy);
+			} else if (std::holds_alternative<FunctionDecl>(kind)) {
 				const auto &func = std::get<FunctionDecl>(kind);
 				std::vector<Type> paramTypes;
 				for (const auto &[name, type] : func.params)
@@ -71,8 +87,11 @@ namespace hadron::frontend {
 					if (n.name_path.empty())
 						return types.error;
 					const std::string type_name = std::string(n.name_path[0].text);
-					if (auto tp = current_scope_->resolve_type(type_name))
+					if (auto tp = current_scope_->resolve_type(type_name)) {
+						if (std::holds_alternative<StructType>(tp->kind))
+							return t;
 						return *tp;
+					}
 					error(n.name_path[0], "Unknown type '" + type_name + "'");
 					return types.error;
 				},
@@ -85,6 +104,7 @@ namespace hadron::frontend {
 					return Type{SliceType{std::make_unique<Type>(std::move(inner))}};
 				},
 				[&](const FunctionType &f) -> Type { return Type{f}; },
+				[&](const StructType &s) -> Type { return t; },
 				[&](const ErrorType &e) -> Type { return types.error; }
 			},
 			t.kind
@@ -230,7 +250,7 @@ namespace hadron::frontend {
 	}
 
 	std::optional<Type> Semantic::analyze_expr(const Expr &expr) {
-		return std::visit(
+		auto result = std::visit(
 			overloaded{
 				[&](const LiteralExpr &e) -> std::optional<Type> {
 					if (e.value.type == TokenType::Number)
@@ -313,11 +333,7 @@ namespace hadron::frontend {
 						}
 					} else {
 						if (e.args.size() != params.size()) {
-							error(
-								e.paren,
-								"Expected " + std::to_string(params.size()) + " arguments but got " +
-									std::to_string(e.args.size()) + "."
-							);
+							error(e.paren, "Expected " + std::to_string(params.size()) + " args.");
 							return std::nullopt;
 						}
 					}
@@ -328,7 +344,7 @@ namespace hadron::frontend {
 							return std::nullopt;
 						if (!are_types_equal(*argType, params[i])) {
 							if (!(is_integer_type(*argType) && is_integer_type(params[i])))
-								error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
+								error(e.paren, "Argument mismatch.");
 						}
 					}
 
@@ -341,12 +357,43 @@ namespace hadron::frontend {
 						return *return_type;
 					return types.void_;
 				},
+
+				[&](const GetExpr &e) -> std::optional<Type> {
+					auto objType = analyze_expr(*e.object);
+					if (!objType)
+						return std::nullopt;
+
+					if (std::holds_alternative<PointerType>(objType->kind))
+						objType = *std::get<PointerType>(objType->kind).inner;
+
+					Type structType = *objType;
+					if (std::holds_alternative<NamedType>(objType->kind)) {
+						const auto &[name_path, generic_args] = std::get<NamedType>(objType->kind);
+						if (const auto resolved = current_scope_->resolve_type(std::string(name_path[0].text)))
+							structType = *resolved;
+					}
+
+					if (!std::holds_alternative<StructType>(structType.kind)) {
+						error(e.name, "Only structs have fields.");
+						return std::nullopt;
+					}
+
+					const auto &[name, fields] = std::get<StructType>(structType.kind);
+					for (const auto &[fieldName, fieldType] : fields) {
+						if (fieldName == e.name.text)
+							return fieldType;
+					}
+
+					error(e.name, "Struct '" + name + "' has no field '" + std::string(e.name.text) + "'.");
+					return std::nullopt;
+				},
 				[&](const CastExpr &e) -> std::optional<Type> {
 					const auto sourceType = analyze_expr(*e.expr);
 					if (!sourceType)
 						return std::nullopt;
 
 					Type targetType = resolve_type(e.target_type);
+
 					if (std::holds_alternative<PointerType>(sourceType->kind) &&
 						std::holds_alternative<PointerType>(targetType.kind))
 						return targetType;
@@ -358,6 +405,9 @@ namespace hadron::frontend {
 					if (std::holds_alternative<PointerType>(sourceType->kind) && is_integer_type(targetType))
 						return targetType;
 
+					if (is_integer_type(*sourceType) && std::holds_alternative<PointerType>(targetType.kind))
+						return targetType;
+
 					error(e.expr->get_token(), "Invalid cast operation.");
 					return std::nullopt;
 				},
@@ -365,6 +415,11 @@ namespace hadron::frontend {
 			},
 			expr.kind
 		);
+
+		if (result)
+			expr.type_cache = *result;
+
+		return result;
 	}
 
 	bool Semantic::are_types_equal(const Type &a, const Type &b) {
@@ -395,6 +450,12 @@ namespace hadron::frontend {
 		if (const auto sa = std::get_if<SliceType>(&a.kind)) {
 			const auto [inner] = std::get<SliceType>(b.kind);
 			return are_types_equal(*sa->inner, *inner);
+		}
+
+		if (const auto sa = std::get_if<StructType>(&a.kind)) {
+			if (const auto sb = std::get_if<StructType>(&b.kind))
+				return sa->name == sb->name;
+			return false;
 		}
 
 		if (const auto na = std::get_if<NamedType>(&a.kind)) {

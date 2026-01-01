@@ -151,11 +151,12 @@ namespace hadron::frontend {
 		Expr expr = equality();
 
 		if (match({TokenType::Eq})) {
-			Token equals = previous();
+			const Token equals = previous();
 			Expr value = assignment();
 
 			return Expr{
-				BinaryExpr{std::make_unique<Expr>(std::move(expr)), equals, std::make_unique<Expr>(std::move(value))}
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), equals, std::make_unique<Expr>(std::move(value))},
+				{}
 			};
 		}
 
@@ -169,10 +170,11 @@ namespace hadron::frontend {
 	Expr Parser::equality() {
 		Expr expr = comparison();
 		while (match({TokenType::EqEq, TokenType::BangEq})) {
-			Token op = previous();
+			const Token op = previous();
 			Expr right = comparison();
-			expr =
-				Expr{BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}};
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
 		}
 		return expr;
 	}
@@ -180,10 +182,11 @@ namespace hadron::frontend {
 	Expr Parser::comparison() {
 		Expr expr = term();
 		while (match({TokenType::Gt, TokenType::GtEq, TokenType::Lt, TokenType::LtEq})) {
-			Token op = previous();
+			const Token op = previous();
 			Expr right = term();
-			expr =
-				Expr{BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}};
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
 		}
 		return expr;
 	}
@@ -191,10 +194,11 @@ namespace hadron::frontend {
 	Expr Parser::term() {
 		Expr expr = factor();
 		while (match({TokenType::Minus, TokenType::Plus})) {
-			Token op = previous();
+			const Token op = previous();
 			Expr right = factor();
-			expr =
-				Expr{BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}};
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
 		}
 		return expr;
 	}
@@ -202,10 +206,11 @@ namespace hadron::frontend {
 	Expr Parser::factor() {
 		Expr expr = cast();
 		while (match({TokenType::Slash, TokenType::Star, TokenType::Percent})) {
-			Token op = previous();
+			const Token op = previous();
 			Expr right = cast();
-			expr =
-				Expr{BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}};
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
 		}
 		return expr;
 	}
@@ -213,9 +218,9 @@ namespace hadron::frontend {
 	Expr Parser::cast() {
 		Expr expr = unary();
 		while (match({TokenType::KwAs})) {
-			Token op = previous();
+			const Token op = previous();
 			Type type = parse_type();
-			expr = Expr{CastExpr{std::make_unique<Expr>(std::move(expr)), op, std::move(type)}};
+			expr = Expr{CastExpr{std::make_unique<Expr>(std::move(expr)), op, std::move(type)}, {}};
 		}
 		return expr;
 	}
@@ -224,7 +229,7 @@ namespace hadron::frontend {
 		if (match({TokenType::Bang, TokenType::Minus, TokenType::Ampersand, TokenType::Star})) {
 			const Token op = previous();
 			Expr right = unary();
-			return Expr{UnaryExpr{op, std::make_unique<Expr>(std::move(right))}};
+			return Expr{UnaryExpr{op, std::make_unique<Expr>(std::move(right))}, {}};
 		}
 		return call();
 	}
@@ -234,7 +239,10 @@ namespace hadron::frontend {
 		while (true) {
 			if (match({TokenType::LParen}))
 				expr = finish_call(std::move(expr));
-			else
+			else if (match({TokenType::Dot})) {
+				const Token name = consume(TokenType::Identifier, "Expect property name after '.'.");
+				expr = Expr{GetExpr{std::make_unique<Expr>(std::move(expr)), name}, {}};
+			} else
 				break;
 		}
 		return expr;
@@ -251,25 +259,25 @@ namespace hadron::frontend {
 		}
 
 		const Token paren = consume(TokenType::RParen, "Expect ')' after arguments.");
-		return Expr{CallExpr{std::make_unique<Expr>(std::move(callee)), paren, std::move(arguments)}};
+		return Expr{CallExpr{std::make_unique<Expr>(std::move(callee)), paren, std::move(arguments)}, {}};
 	}
 
 	Expr Parser::primary() {
 		if (match({TokenType::KwFalse}))
-			return Expr{LiteralExpr{previous()}};
+			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::KwTrue}))
-			return Expr{LiteralExpr{previous()}};
+			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::KwNull}))
-			return Expr{LiteralExpr{previous()}};
+			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::Number, TokenType::String}))
-			return Expr{LiteralExpr{previous()}};
+			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::Identifier}))
-			return Expr{VariableExpr{previous()}};
+			return Expr{VariableExpr{previous()}, {}};
 		if (match({TokenType::LParen})) {
 			const Token paren = previous();
 			Expr expr = expression();
 			consume(TokenType::RParen, "Expect ')' after expression.");
-			return Expr{GroupingExpr{std::make_unique<Expr>(std::move(expr)), paren}};
+			return Expr{GroupingExpr{std::make_unique<Expr>(std::move(expr)), paren}, {}};
 		}
 		throw std::runtime_error("Expect expression.");
 	}
