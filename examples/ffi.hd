@@ -1,0 +1,18 @@
+module main;
+
+extern fx printf(fmt: ptr<u8>, ...) i32;
+extern fx malloc(size: usize) ptr<byte>;
+extern fx free(p: ptr<byte>) void;
+extern fx memcpy(dest: ptr<byte>, src: ptr<byte>, n: usize) ptr<byte>;
+
+fx main() i32 {
+	val raw_ptr = malloc(4);
+	val int_ptr = raw_ptr as ptr<i32>;
+
+	val source: i32 = 12345;
+	memcpy(raw_ptr, (&source) as ptr<byte>, 4);
+	val val_read = *int_ptr;
+	printf("Value read from heap: %d %p\n", val_read, &val_read);
+	free(raw_ptr);
+	return 0;
+}

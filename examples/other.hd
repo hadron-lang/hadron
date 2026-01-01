@@ -1,0 +1,12 @@
+module main;
+
+extern fx printf(fmt: ptr<u8>, ...);
+extern fx scanf(fmt: ptr<u8>, ...);
+
+fx main() i32 {
+    val x: i64 = 0;
+    printf("Enter a number: ");
+    scanf("%lld", &x);
+    printf("You have wrote: %lld\n", x);
+    return 0;
+}
