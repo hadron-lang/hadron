@@ -38,7 +38,8 @@ namespace hadron::frontend {
 		{"try", TokenType::KwTry},
 		{"catch", TokenType::KwCatch},
 		{"throw", TokenType::KwThrow},
-		{"extern", TokenType::KwExtern}
+		{"extern", TokenType::KwExtern},
+		{"sizeof", TokenType::KwSizeOf}
 	};
 
 	std::string Token::to_string() const {

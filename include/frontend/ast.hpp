@@ -68,9 +68,22 @@ namespace hadron::frontend {
 		Token name;
 	};
 
+	struct SizeOfExpr {
+		Token keyword;
+		Type type;
+	};
+
 	struct Expr {
-		using Kind =
-			std::variant<LiteralExpr, VariableExpr, BinaryExpr, UnaryExpr, GroupingExpr, CallExpr, CastExpr, GetExpr>;
+		using Kind = std::variant<
+			LiteralExpr,
+			VariableExpr,
+			BinaryExpr,
+			UnaryExpr,
+			GroupingExpr,
+			CallExpr,
+			CastExpr,
+			GetExpr,
+			SizeOfExpr>;
 		Kind kind;
 
 		mutable std::optional<Type> type_cache;

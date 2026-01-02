@@ -273,6 +273,13 @@ namespace hadron::frontend {
 			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::Identifier}))
 			return Expr{VariableExpr{previous()}, {}};
+		if (match({TokenType::KwSizeOf})) {
+			const Token keyword = previous();
+			consume(TokenType::LParen, "Expect '(' after 'sizeof'.");
+			const Type type = parse_type();
+			consume(TokenType::RParen, "Expect ')' after type.");
+			return Expr{SizeOfExpr{keyword, std::move(type)}, {}};
+		}
 		if (match({TokenType::LParen})) {
 			const Token paren = previous();
 			Expr expr = expression();

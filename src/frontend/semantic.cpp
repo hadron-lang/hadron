@@ -283,6 +283,10 @@ namespace hadron::frontend {
 						return types.bool_;
 					return left;
 				},
+				[&](const SizeOfExpr &e) -> std::optional<Type> {
+					resolve_type(e.type);
+					return types.u64;
+				},
 				[&](const UnaryExpr &e) -> std::optional<Type> {
 					const auto rightType = analyze_expr(*e.right);
 					if (!rightType)

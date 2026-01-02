@@ -47,6 +47,7 @@ namespace hadron::frontend {
 		KwCatch,
 		KwThrow,
 		KwExtern,
+		KwSizeOf,
 
 		Plus,
 		Minus,

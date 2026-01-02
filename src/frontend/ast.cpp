@@ -16,7 +16,8 @@ namespace hadron::frontend {
 				[](const GroupingExpr &e) -> const Token & { return e.paren; },
 				[](const CallExpr &e) -> const Token & { return e.paren; },
 				[](const CastExpr &e) -> const Token & { return e.op; },
-				[](const GetExpr &e) -> const Token & { return e.name; }
+				[](const GetExpr &e) -> const Token & { return e.name; },
+				[](const SizeOfExpr &e) -> const Token & { return e.keyword; }
 			},
 			kind
 		);

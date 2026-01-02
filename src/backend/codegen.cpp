@@ -566,6 +566,11 @@ namespace hadron::backend {
 
 					return builder_->CreateCall(calleeF, argsV, "calltmp");
 				},
+				[&](const frontend::SizeOfExpr &e) -> llvm::Value * {
+					llvm::Type *llvmType = get_llvm_type(e.type);
+					u64 size = module_->getDataLayout().getTypeAllocSize(llvmType);
+					return llvm::ConstantInt::get(*context_, llvm::APInt(64, size));
+				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
 			expr.kind
