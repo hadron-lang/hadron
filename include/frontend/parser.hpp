@@ -28,6 +28,8 @@ namespace hadron::frontend {
 		Expr equality();
 		Expr assignment();
 		Expr expression();
+		Expr logical_or();
+		Expr logical_and();
 		Expr comparison();
 		Expr term();
 		Expr factor();

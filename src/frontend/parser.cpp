@@ -150,9 +150,9 @@ namespace hadron::frontend {
 	}
 
 	Expr Parser::assignment() {
-		Expr expr = equality();
+		Expr expr = logical_or();
 
-		if (match({TokenType::Eq})) {
+		if (match({TokenType::Eq, TokenType::PlusEq, TokenType::MinusEq, TokenType::StarEq, TokenType::SlashEq})) {
 			const Token equals = previous();
 			Expr value = assignment();
 
@@ -174,6 +174,30 @@ namespace hadron::frontend {
 		while (match({TokenType::EqEq, TokenType::BangEq})) {
 			const Token op = previous();
 			Expr right = comparison();
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
+		}
+		return expr;
+	}
+
+	Expr Parser::logical_or() {
+		Expr expr = logical_and();
+		while (match({TokenType::Or})) {
+			const Token op = previous();
+			Expr right = logical_and();
+			expr = Expr{
+				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
+			};
+		}
+		return expr;
+	}
+
+	Expr Parser::logical_and() {
+		Expr expr = equality();
+		while (match({TokenType::And})) {
+			const Token op = previous();
+			Expr right = equality();
 			expr = Expr{
 				BinaryExpr{std::make_unique<Expr>(std::move(expr)), op, std::make_unique<Expr>(std::move(right))}, {}
 			};

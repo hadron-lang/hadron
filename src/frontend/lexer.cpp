@@ -225,7 +225,11 @@ namespace hadron::frontend {
 					type = TokenType::Colon;
 					break;
 				case '*':
-					type = TokenType::Star;
+					if (match('=')) {
+						type = TokenType::StarEq;
+						len = 2;
+					} else
+						type = TokenType::Star;
 					break;
 				case '%':
 					type = TokenType::Percent;
@@ -237,17 +241,28 @@ namespace hadron::frontend {
 					type = TokenType::Bang;
 					break;
 				case '+':
-					type = TokenType::Plus;
+					if (match('=')) {
+						type = TokenType::PlusEq;
+						len = 2;
+					} else
+						type = TokenType::Plus;
 					break;
 				case '-':
 					if (match('>')) {
 						type = TokenType::Arrow;
 						len = 2;
+					} else if (match('=')) {
+						type = TokenType::MinusEq;
+						len = 2;
 					} else
 						type = TokenType::Minus;
 					break;
 				case '/':
-					type = TokenType::Slash;
+					if (match('=')) {
+						type = TokenType::SlashEq;
+						len = 2;
+					} else
+						type = TokenType::Slash;
 					break;
 				case '=':
 					if (match('=')) {
@@ -281,10 +296,18 @@ namespace hadron::frontend {
 						type = TokenType::Gt;
 					break;
 				case '&':
-					type = TokenType::Ampersand;
+					if (match('&')) {
+						type = TokenType::And;
+						len = 2;
+					} else
+						type = TokenType::Ampersand;
 					break;
 				case '|':
-					type = TokenType::Pipe;
+					if (match('|')) {
+						type = TokenType::Or;
+						len = 2;
+					} else
+						type = TokenType::Pipe;
 					break;
 				default:
 					tokens.push_back(make_error_token("Unexpected character"));

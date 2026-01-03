@@ -66,6 +66,12 @@ namespace hadron::frontend {
 		FatArrow,
 		Ampersand,
 		Pipe,
+		And,
+		Or,
+		PlusEq,
+		MinusEq,
+		StarEq,
+		SlashEq,
 		Caret,
 
 		LParen,

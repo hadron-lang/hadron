@@ -275,23 +275,50 @@ namespace hadron::frontend {
 					const auto right = analyze_expr(*e.right);
 					if (!left || !right)
 						return std::nullopt;
+
+					if (e.op.type == TokenType::And || e.op.type == TokenType::Or) {
+						if (!are_types_equal(*left, types.bool_) || !are_types_equal(*right, types.bool_)) {
+							error(e.op, "Operands of logical operator must be booleans.");
+							return std::nullopt;
+						}
+						return types.bool_;
+					}
+
+					if (e.op.type == TokenType::PlusEq || e.op.type == TokenType::MinusEq ||
+						e.op.type == TokenType::StarEq || e.op.type == TokenType::SlashEq) {
+						bool valid = false;
+						if (e.op.type == TokenType::PlusEq || e.op.type == TokenType::MinusEq) {
+							if (std::holds_alternative<PointerType>(left->kind) && is_integer_type(*right))
+								valid = true;
+						}
+						if (!valid && !are_types_equal(*left, *right)) {
+							error(e.op, "Type mismatch in compound assignment.");
+							return std::nullopt;
+						}
+						return *left;
+					}
+
 					if (e.op.type == TokenType::Plus) {
 						if (std::holds_alternative<PointerType>(left->kind) && is_integer_type(*right))
 							return *left;
 						if (is_integer_type(*left) && std::holds_alternative<PointerType>(right->kind))
 							return *right;
 					}
+
 					if (e.op.type == TokenType::Minus) {
 						if (std::holds_alternative<PointerType>(left->kind) && is_integer_type(*right))
 							return *left;
 					}
+
 					if (!are_types_equal(*left, *right)) {
 						error(e.op, "Type mismatch in binary expression.");
 						return std::nullopt;
 					}
+
 					if (e.op.type == TokenType::EqEq || e.op.type == TokenType::Gt || e.op.type == TokenType::BangEq ||
 						e.op.type == TokenType::Lt || e.op.type == TokenType::GtEq || e.op.type == TokenType::LtEq)
 						return types.bool_;
+
 					return *left;
 				},
 				[&](const SizeOfExpr &e) -> std::optional<Type> {
