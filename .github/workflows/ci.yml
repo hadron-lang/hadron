@@ -26,14 +26,15 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 21 all
-          sudo apt-get install -y cmake ninja-build libgtest-dev
+          sudo apt-get install -y cmake ninja-build libgtest-dev llvm-21-dev
 
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_TESTS=ON \
-          -DENABLE_SANITIZERS=ON
+          -DENABLE_SANITIZERS=ON \
+          -DLLVM_DIR=/usr/lib/llvm-21/lib/cmake/llvm
 
       - name: Build
         run: cmake --build build --parallel $(nproc)
