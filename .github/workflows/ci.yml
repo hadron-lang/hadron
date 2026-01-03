@@ -17,8 +17,6 @@ jobs:
     env:
       CC: clang-21
       CXX: clang++-21
-      CXXFLAGS: "-stdlib=libc++"
-      LDFLAGS: "-stdlib=libc++ -lc++abi"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -28,7 +26,7 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           sudo ./llvm.sh 21 all
-          sudo apt-get install -y cmake ninja-build libgtest-dev llvm-21-dev libc++-21-dev libc++abi-21-dev
+          sudo apt-get install -y cmake ninja-build libgtest-dev llvm-21-dev libclang-21-dev
 
       - name: Configure CMake
         run: |
