@@ -242,6 +242,15 @@ namespace hadron::frontend {
 			else if (match({TokenType::Dot})) {
 				const Token name = consume(TokenType::Identifier, "Expect property name after '.'.");
 				expr = Expr{GetExpr{std::make_unique<Expr>(std::move(expr)), name}, {}};
+			} else if (match({TokenType::LBracket})) {
+				Expr index = expression();
+				const Token rBracket = consume(TokenType::RBracket, "");
+				expr = Expr{
+					ArrayAccessExpr{
+						std::make_unique<Expr>(std::move(expr)), std::make_unique<Expr>(std::move(index)), rBracket
+					},
+					{}
+				};
 			} else
 				break;
 		}

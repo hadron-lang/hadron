@@ -465,6 +465,27 @@ namespace hadron::frontend {
 					error(e.expr->get_token(), "Invalid cast operation.");
 					return std::nullopt;
 				},
+				[&](const ArrayAccessExpr &e) -> std::optional<Type> {
+					const auto targetType = analyze_expr(*e.target);
+					if (!targetType)
+						return std::nullopt;
+
+					if (!std::holds_alternative<PointerType>(targetType->kind)) {
+						error(e.r_bracket, "Type is not a pointer, cannot index.");
+						return std::nullopt;
+					}
+
+					const auto indexType = analyze_expr(*e.index);
+					if (!indexType)
+						return std::nullopt;
+
+					if (!is_integer_type(*indexType)) {
+						error(e.index->get_token(), "Array index must be an integer.");
+						return std::nullopt;
+					}
+
+					return *std::get<PointerType>(targetType->kind).inner;
+				},
 				[](const auto &) -> std::optional<Type> { return std::nullopt; }
 			},
 			expr.kind

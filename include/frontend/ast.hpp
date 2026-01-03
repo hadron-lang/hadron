@@ -84,6 +84,12 @@ namespace hadron::frontend {
 		std::vector<FieldInit> fields;
 	};
 
+	struct ArrayAccessExpr {
+		std::unique_ptr<Expr> target;
+		std::unique_ptr<Expr> index;
+		Token r_bracket;
+	};
+
 	struct Expr {
 		using Kind = std::variant<
 			LiteralExpr,
@@ -95,7 +101,8 @@ namespace hadron::frontend {
 			CastExpr,
 			GetExpr,
 			SizeOfExpr,
-			StructInitExpr>;
+			StructInitExpr,
+			ArrayAccessExpr>;
 		Kind kind;
 
 		mutable std::optional<Type> type_cache;

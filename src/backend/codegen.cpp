@@ -418,6 +418,8 @@ namespace hadron::backend {
 							const auto &[name] = std::get<frontend::VariableExpr>(e.right->kind);
 							return named_values_[std::string(name.text)];
 						}
+						if (std::holds_alternative<frontend::ArrayAccessExpr>(e.right->kind))
+							return gen_addr(*e.right);
 						std::cerr << "CodeGen Error: Can only take address of variables or fields.\n";
 						return nullptr;
 					}
@@ -479,6 +481,10 @@ namespace hadron::backend {
 								destType = alloca->getAllocatedType();
 							}
 						} else if (std::holds_alternative<frontend::GetExpr>(e.left->kind)) {
+							ptr = gen_addr(*e.left);
+							if (ptr && e.left->type_cache)
+								destType = get_llvm_type(*e.left->type_cache);
+						} else if (std::holds_alternative<frontend::ArrayAccessExpr>(e.left->kind)) {
 							ptr = gen_addr(*e.left);
 							if (ptr && e.left->type_cache)
 								destType = get_llvm_type(*e.left->type_cache);
@@ -578,7 +584,7 @@ namespace hadron::backend {
 
 					llvm::AllocaInst *alloc = builder_->CreateAlloca(structTy, nullptr, "struct_init");
 					const std::string structName = frontend::get_type_name(e.type);
-					if (structName.empty() || !struct_field_indices_.count(structName)) {
+					if (structName.empty() || !struct_field_indices_.contains(structName)) {
 						std::cerr << "CodeGen Error: Unknown struct layout for " << structName << "\n";
 						return nullptr;
 					}
@@ -603,6 +609,12 @@ namespace hadron::backend {
 					}
 
 					return builder_->CreateLoad(structTy, alloc, "struct_val");
+				},
+				[&](const frontend::ArrayAccessExpr &e) -> llvm::Value * {
+					llvm::Value *ptr = gen_addr(expr);
+					if (!ptr || !expr.type_cache)
+						return nullptr;
+					return builder_->CreateLoad(get_llvm_type(*expr.type_cache), ptr, "array_val");
 				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
@@ -652,6 +664,27 @@ namespace hadron::backend {
 						return nullptr;
 
 					return builder_->CreateStructGEP(st, basePtr, fieldIndex, "ptr_" + fieldName);
+				},
+				[&](const frontend::ArrayAccessExpr &e) -> llvm::Value * {
+					llvm::Value *basePtr = gen_expr(*e.target);
+					if (!basePtr)
+						return nullptr;
+
+					llvm::Value *indexVal = gen_expr(*e.index);
+					if (!indexVal)
+						return nullptr;
+
+					if (!e.target->type_cache)
+						return nullptr;
+
+					auto [kind] = *e.target->type_cache;
+					if (!std::holds_alternative<frontend::PointerType>(kind))
+						return nullptr;
+
+					const frontend::Type elementType = *std::get<frontend::PointerType>(kind).inner;
+					llvm::Type *llvmElementType = get_llvm_type(elementType);
+
+					return builder_->CreateGEP(llvmElementType, basePtr, indexVal, "arrayidx");
 				},
 				[](const auto &) -> llvm::Value * {
 					std::cerr << "CodeGen Error: Cannot take address of r-value.\n";
