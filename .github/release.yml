@@ -1,0 +1,30 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - bot
+  categories:
+    - title: New Features
+      labels:
+        - feature
+        - feat
+        - enhancement
+    - title: Bug Fixes
+      labels:
+        - fix
+        - bug
+    - title: Tests
+      labels:
+        - test
+        - tests
+    - title: Chore & Maintenance
+      labels:
+        - chore
+        - maintenance
+        - refactor
+    - title: Documentation
+      labels:
+        - doc
+        - docs
+        - documentation
