@@ -191,12 +191,14 @@ namespace hadron::backend {
 					for (const auto &bodyStmt : s.body)
 						gen_stmt(bodyStmt);
 
-					if (returnType->isVoidTy() && !entryBlock->getTerminator())
+					if (returnType->isVoidTy() && !builder_->GetInsertBlock()->getTerminator())
 						builder_->CreateRetVoid();
 
-					if (llvm::verifyFunction(*function, &llvm::errs()))
+					if (llvm::verifyFunction(*function, &llvm::errs())) {
 						std::cerr << "Critical Error: Generated function '" << std::string(s.name.text)
 								  << "' is invalid !\n";
+						return;
+					}
 
 					fpm_->run(*function);
 				},
@@ -519,24 +521,22 @@ namespace hadron::backend {
 				},
 				[&](const frontend::GroupingExpr &e) -> llvm::Value * { return gen_expr(*e.expression); },
 				[&](const frontend::BinaryExpr &e) -> llvm::Value * {
-					if (e.op.type == frontend::TokenType::Eq) {
+					if (e.op.type == frontend::TokenType::Eq || e.op.type == frontend::TokenType::PlusEq ||
+						e.op.type == frontend::TokenType::MinusEq || e.op.type == frontend::TokenType::StarEq ||
+						e.op.type == frontend::TokenType::SlashEq) {
 						llvm::Value *ptr = nullptr;
 						llvm::Type *destType = nullptr;
 
 						if (std::holds_alternative<frontend::VariableExpr>(e.left->kind)) {
 							ptr = gen_addr(*e.left);
 							if (ptr) {
-								if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) {
+								if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr))
 									destType = alloca->getAllocatedType();
-								} else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) {
+								else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(ptr))
 									destType = global->getValueType();
-								}
 							}
-						} else if (std::holds_alternative<frontend::GetExpr>(e.left->kind)) {
-							ptr = gen_addr(*e.left);
-							if (ptr && e.left->type_cache)
-								destType = get_llvm_type(*e.left->type_cache);
-						} else if (std::holds_alternative<frontend::ArrayAccessExpr>(e.left->kind)) {
+						} else if (std::holds_alternative<frontend::GetExpr>(e.left->kind) ||
+								   std::holds_alternative<frontend::ArrayAccessExpr>(e.left->kind)) {
 							ptr = gen_addr(*e.left);
 							if (ptr && e.left->type_cache)
 								destType = get_llvm_type(*e.left->type_cache);
@@ -550,24 +550,127 @@ namespace hadron::backend {
 						}
 
 						if (!ptr || !destType) {
-							std::cerr << "CodeGen Error: LHS of assignment must be a variable or field.\n";
+							std::cerr << "CodeGen Error: LHS of assignment must be a variable, field, array element or"
+									  << " dereference.\n";
 							return nullptr;
 						}
 
-						llvm::Value *val = gen_expr(*e.right);
-						if (!val)
+						llvm::Value *rhsVal = gen_expr(*e.right);
+						if (!rhsVal)
 							return nullptr;
 
-						if (val->getType() != destType) {
-							if (destType->isPointerTy() && val->getType()->isIntegerTy())
-								val = builder_->CreateIntToPtr(val, destType);
-							else if (destType->isPointerTy() && val->getType()->isPointerTy())
-								val = builder_->CreateBitCast(val, destType);
-							else if (destType->isIntegerTy() && val->getType()->isIntegerTy())
-								val = builder_->CreateIntCast(val, destType, false);
+						if (e.op.type != frontend::TokenType::Eq) {
+							llvm::Value *oldVal = builder_->CreateLoad(destType, ptr, "oldVal");
+							llvm::Value *newVal = nullptr;
+
+							switch (e.op.type) {
+							case frontend::TokenType::PlusEq:
+								if (destType->isPointerTy() && rhsVal->getType()->isIntegerTy()) {
+									if (e.left->type_cache &&
+										std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind)) {
+										llvm::Type *elmTy = get_llvm_type(
+											*std::get<frontend::PointerType>(e.left->type_cache->kind).inner
+										);
+										newVal = builder_->CreateGEP(elmTy, oldVal, rhsVal, "ptr_inc");
+									}
+								} else {
+									newVal = builder_->CreateAdd(oldVal, rhsVal, "add_eq");
+								}
+								break;
+							case frontend::TokenType::MinusEq:
+								if (destType->isPointerTy() && rhsVal->getType()->isIntegerTy()) {
+									if (e.left->type_cache &&
+										std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind)) {
+										llvm::Type *elmTy = get_llvm_type(
+											*std::get<frontend::PointerType>(e.left->type_cache->kind).inner
+										);
+										newVal =
+											builder_->CreateGEP(elmTy, oldVal, builder_->CreateNeg(rhsVal), "ptr_dec");
+									}
+								} else {
+									newVal = builder_->CreateSub(oldVal, rhsVal, "sub_eq");
+								}
+								break;
+							case frontend::TokenType::StarEq:
+								newVal = builder_->CreateMul(oldVal, rhsVal, "mul_eq");
+								break;
+							case frontend::TokenType::SlashEq:
+								newVal = builder_->CreateSDiv(oldVal, rhsVal, "div_eq");
+								break;
+							default:
+								break;
+							}
+							rhsVal = newVal;
 						}
-						builder_->CreateStore(val, ptr);
-						return val;
+
+						if (rhsVal && rhsVal->getType() != destType) {
+							if (destType->isPointerTy() && rhsVal->getType()->isIntegerTy())
+								rhsVal = builder_->CreateIntToPtr(rhsVal, destType);
+							else if (destType->isPointerTy() && rhsVal->getType()->isPointerTy())
+								rhsVal = builder_->CreateBitCast(rhsVal, destType);
+							else if (destType->isIntegerTy() && rhsVal->getType()->isIntegerTy())
+								rhsVal = builder_->CreateIntCast(rhsVal, destType, false);
+						}
+
+						if (rhsVal)
+							builder_->CreateStore(rhsVal, ptr);
+						return rhsVal;
+					}
+
+					if (e.op.type == frontend::TokenType::And) {
+						llvm::Value *L = gen_expr(*e.left);
+						if (!L)
+							return nullptr;
+
+						llvm::Function *func = builder_->GetInsertBlock()->getParent();
+						llvm::BasicBlock *lhsBlock = builder_->GetInsertBlock();
+						llvm::BasicBlock *rhsBlock = llvm::BasicBlock::Create(*context_, "and.rhs", func);
+						llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(*context_, "and.merge");
+
+						builder_->CreateCondBr(L, rhsBlock, mergeBlock);
+
+						builder_->SetInsertPoint(rhsBlock);
+						llvm::Value *rhsVal = gen_expr(*e.right);
+						if (!rhsVal)
+							return nullptr;
+						builder_->CreateBr(mergeBlock);
+						rhsBlock = builder_->GetInsertBlock();
+
+						func->insert(func->end(), mergeBlock);
+						builder_->SetInsertPoint(mergeBlock);
+
+						llvm::PHINode *phi = builder_->CreatePHI(llvm::Type::getInt1Ty(*context_), 2, "and.tmp");
+						phi->addIncoming(llvm::ConstantInt::get(*context_, llvm::APInt(1, 0)), lhsBlock);
+						phi->addIncoming(rhsVal, rhsBlock);
+						return phi;
+					}
+
+					if (e.op.type == frontend::TokenType::Or) {
+						llvm::Value *L = gen_expr(*e.left);
+						if (!L)
+							return nullptr;
+
+						llvm::Function *func = builder_->GetInsertBlock()->getParent();
+						llvm::BasicBlock *lhsBlock = builder_->GetInsertBlock();
+						llvm::BasicBlock *rhsBlock = llvm::BasicBlock::Create(*context_, "or.rhs", func);
+						llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(*context_, "or.merge");
+
+						builder_->CreateCondBr(L, mergeBlock, rhsBlock);
+
+						builder_->SetInsertPoint(rhsBlock);
+						llvm::Value *rhsVal = gen_expr(*e.right);
+						if (!rhsVal)
+							return nullptr;
+						builder_->CreateBr(mergeBlock);
+						rhsBlock = builder_->GetInsertBlock();
+
+						func->insert(func->end(), mergeBlock);
+						builder_->SetInsertPoint(mergeBlock);
+
+						llvm::PHINode *phi = builder_->CreatePHI(llvm::Type::getInt1Ty(*context_), 2, "or.tmp");
+						phi->addIncoming(llvm::ConstantInt::get(*context_, llvm::APInt(1, 1)), lhsBlock);
+						phi->addIncoming(rhsVal, rhsBlock);
+						return phi;
 					}
 
 					llvm::Value *L = gen_expr(*e.left);
@@ -610,10 +713,16 @@ namespace hadron::backend {
 						return builder_->CreateSDiv(L, R, "divtmp");
 					case frontend::TokenType::EqEq:
 						return builder_->CreateICmpEQ(L, R, "eqtmp");
+					case frontend::TokenType::BangEq:
+						return builder_->CreateICmpNE(L, R, "neqtmp");
 					case frontend::TokenType::Lt:
 						return builder_->CreateICmpSLT(L, R, "lttmp");
+					case frontend::TokenType::LtEq:
+						return builder_->CreateICmpSLE(L, R, "lteqtmp");
 					case frontend::TokenType::Gt:
 						return builder_->CreateICmpSGT(L, R, "gttmp");
+					case frontend::TokenType::GtEq:
+						return builder_->CreateICmpSGE(L, R, "gteqtmp");
 					default:
 						return nullptr;
 					}
