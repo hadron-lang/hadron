@@ -271,14 +271,32 @@ namespace hadron::frontend {
 			return Expr{LiteralExpr{previous()}, {}};
 		if (match({TokenType::Number, TokenType::String}))
 			return Expr{LiteralExpr{previous()}, {}};
-		if (match({TokenType::Identifier}))
+		if (match({TokenType::Identifier})) {
+			if (check(TokenType::LBrace)) {
+				Token typeName = previous();
+				Type type = Type{NamedType{{typeName}, {}}};
+				Token lBrace = consume(TokenType::LBrace, "Expect '{' after structure name.");
+				std::vector<FieldInit> fields;
+				if (!check(TokenType::RBrace)) {
+					do {
+						Token fieldName = consume(TokenType::Identifier, "Expect field name.");
+						consume(TokenType::Eq, "Expect '=' after field name.");
+						Expr value = expression();
+						fields.emplace_back(FieldInit{fieldName, std::make_unique<Expr>(std::move(value))});
+					} while (match({TokenType::Comma}));
+				}
+				consume(TokenType::RBrace, "Expect '}' after struct fields.");
+				return Expr{StructInitExpr{std::move(type), lBrace, std::move(fields)}, {}};
+			}
+
 			return Expr{VariableExpr{previous()}, {}};
+		}
 		if (match({TokenType::KwSizeOf})) {
 			const Token keyword = previous();
 			consume(TokenType::LParen, "Expect '(' after 'sizeof'.");
 			const Type type = parse_type();
 			consume(TokenType::RParen, "Expect ')' after type.");
-			return Expr{SizeOfExpr{keyword, std::move(type)}, {}};
+			return Expr{SizeOfExpr{keyword, type}, {}};
 		}
 		if (match({TokenType::LParen})) {
 			const Token paren = previous();

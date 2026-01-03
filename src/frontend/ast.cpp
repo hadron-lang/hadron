@@ -17,7 +17,8 @@ namespace hadron::frontend {
 				[](const CallExpr &e) -> const Token & { return e.paren; },
 				[](const CastExpr &e) -> const Token & { return e.op; },
 				[](const GetExpr &e) -> const Token & { return e.name; },
-				[](const SizeOfExpr &e) -> const Token & { return e.keyword; }
+				[](const SizeOfExpr &e) -> const Token & { return e.keyword; },
+				[](const StructInitExpr &e) -> const Token & { return e.l_brace; }
 			},
 			kind
 		);

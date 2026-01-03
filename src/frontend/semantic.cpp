@@ -40,12 +40,12 @@ namespace hadron::frontend {
 
 		for (const auto &[kind] : unit_.declarations) {
 			if (std::holds_alternative<StructDecl>(kind)) {
-				const auto &s = std::get<StructDecl>(kind);
-				std::vector<std::pair<std::string, Type>> fields;
-				for (const auto &[name, type] : s.fields)
-					fields.emplace_back(name.text, resolve_type(type));
-				Type structTy = Type{StructType{std::string(s.name.text), std::move(fields)}};
-				current_scope_->redefine_type(std::string(s.name.text), structTy);
+				const auto &[name, fields] = std::get<StructDecl>(kind);
+				std::vector<std::pair<std::string, Type>> vecFields;
+				for (const auto &[token, type] : fields)
+					vecFields.emplace_back(token.text, resolve_type(type));
+				Type structTy = Type{StructType{std::string(name.text), std::move(vecFields)}};
+				current_scope_->redefine_type(std::string(name.text), structTy);
 			} else if (std::holds_alternative<FunctionDecl>(kind)) {
 				const auto &func = std::get<FunctionDecl>(kind);
 				std::vector<Type> paramTypes;
@@ -74,8 +74,8 @@ namespace hadron::frontend {
 	}
 
 	void Semantic::error(const Token &token, const std::string &message) {
-		char *err = static_cast<char *>(__builtin_alloca(256));
-		snprintf(err, 256, "%d:%d Semantic Error: %s", token.location.line, token.location.column, message.c_str());
+		char *err = static_cast<char *>(__builtin_alloca(512));
+		snprintf(err, 512, "%d:%d Semantic Error: %s", token.location.line, token.location.column, message.c_str());
 		errors_.emplace_back(err);
 	}
 
@@ -269,6 +269,7 @@ namespace hadron::frontend {
 					}
 					return sym->type;
 				},
+
 				[&](const BinaryExpr &e) -> std::optional<Type> {
 					const auto left = analyze_expr(*e.left);
 					const auto right = analyze_expr(*e.right);
@@ -281,11 +282,56 @@ namespace hadron::frontend {
 					if (e.op.type == TokenType::EqEq || e.op.type == TokenType::Gt || e.op.type == TokenType::BangEq ||
 						e.op.type == TokenType::Lt || e.op.type == TokenType::GtEq || e.op.type == TokenType::LtEq)
 						return types.bool_;
-					return left;
+					return *left;
 				},
 				[&](const SizeOfExpr &e) -> std::optional<Type> {
 					resolve_type(e.type);
 					return types.u64;
+				},
+				[&](const StructInitExpr &e) -> std::optional<Type> {
+					Type resolvedType = resolve_type(e.type);
+					if (std::holds_alternative<ErrorType>(resolvedType.kind))
+						return std::nullopt;
+
+					std::string structName;
+					if (const auto nt = std::get_if<NamedType>(&resolvedType.kind))
+						structName = std::string(nt->name_path[0].text);
+					else if (const auto st = std::get_if<StructType>(&resolvedType.kind))
+						structName = st->name;
+					else {
+						error(e.l_brace, "Type is not a struct.");
+						return std::nullopt;
+					}
+
+					const auto defTypeOpt = current_scope_->resolve_type(structName);
+					if (!defTypeOpt || !std::holds_alternative<StructType>(defTypeOpt->kind)) {
+						error(e.l_brace, "Unknown struct type '" + structName + "'.");
+						return std::nullopt;
+					}
+
+					const auto &[name, fields] = std::get<StructType>(defTypeOpt->kind);
+					for (const auto &[fieldName, fieldValue] : e.fields) {
+						auto initType = analyze_expr(*fieldValue);
+						if (!initType)
+							return std::nullopt;
+
+						bool found = false;
+						for (const auto &[defName, defType] : fields) {
+							if (defName == fieldName.text) {
+								if (!are_types_equal(*initType, defType))
+									error(fieldName, "Type mismatch for field '" + std::string(defName) + "'.");
+								found = true;
+								break;
+							}
+						}
+						if (!found) {
+							error(
+								fieldName,
+								"Struct '" + structName + "' has no field named '" + std::string(fieldName.text) + "'."
+							);
+						}
+					}
+					return resolvedType;
 				},
 				[&](const UnaryExpr &e) -> std::optional<Type> {
 					const auto rightType = analyze_expr(*e.right);
@@ -337,7 +383,11 @@ namespace hadron::frontend {
 						}
 					} else {
 						if (e.args.size() != params.size()) {
-							error(e.paren, "Expected " + std::to_string(params.size()) + " args.");
+							error(
+								e.paren,
+								"Expected " + std::to_string(params.size()) + " arguments but got " +
+									std::to_string(e.args.size())
+							);
 							return std::nullopt;
 						}
 					}
@@ -348,7 +398,7 @@ namespace hadron::frontend {
 							return std::nullopt;
 						if (!are_types_equal(*argType, params[i])) {
 							if (!(is_integer_type(*argType) && is_integer_type(params[i])))
-								error(e.paren, "Argument mismatch.");
+								error(e.paren, "Argument " + std::to_string(i + 1) + " type mismatch.");
 						}
 					}
 

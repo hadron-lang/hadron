@@ -568,8 +568,41 @@ namespace hadron::backend {
 				},
 				[&](const frontend::SizeOfExpr &e) -> llvm::Value * {
 					llvm::Type *llvmType = get_llvm_type(e.type);
-					u64 size = module_->getDataLayout().getTypeAllocSize(llvmType);
+					const u64 size = module_->getDataLayout().getTypeAllocSize(llvmType);
 					return llvm::ConstantInt::get(*context_, llvm::APInt(64, size));
+				},
+				[&](const frontend::StructInitExpr &e) -> llvm::Value * {
+					llvm::Type *structTy = get_llvm_type(e.type);
+					if (!structTy)
+						return nullptr;
+
+					llvm::AllocaInst *alloc = builder_->CreateAlloca(structTy, nullptr, "struct_init");
+					const std::string structName = frontend::get_type_name(e.type);
+					if (structName.empty() || !struct_field_indices_.count(structName)) {
+						std::cerr << "CodeGen Error: Unknown struct layout for " << structName << "\n";
+						return nullptr;
+					}
+
+					for (const auto &[name, value] : e.fields) {
+						llvm::Value *val = gen_expr(*value);
+						if (!val)
+							continue;
+
+						std::string fieldName = std::string(name.text);
+						const u32 index = struct_field_indices_[structName][fieldName];
+
+						llvm::Value *fieldPtr = builder_->CreateStructGEP(structTy, alloc, index, "init_" + fieldName);
+						if (llvm::Type *destType = fieldPtr->getType(); val->getType() != destType) {
+							if (destType->isPointerTy() && val->getType()->isPointerTy())
+								val = builder_->CreateBitCast(val, destType);
+							else if (destType->isIntegerTy() && val->getType()->isIntegerTy())
+								val = builder_->CreateIntCast(val, destType, false);
+						}
+
+						builder_->CreateStore(val, fieldPtr);
+					}
+
+					return builder_->CreateLoad(structTy, alloc, "struct_val");
 				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
@@ -651,8 +684,6 @@ namespace hadron::backend {
 				return llvm::Type::getFloatTy(*context_);
 			case frontend::BuiltinType::F64:
 				return llvm::Type::getDoubleTy(*context_);
-			case frontend::BuiltinType::Void:
-				return llvm::Type::getVoidTy(*context_);
 			default:
 				return llvm::Type::getVoidTy(*context_);
 			}
