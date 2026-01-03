@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    env:
+      CC: clang-21
+      CXX: clang++-21
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install LLVM/Clang 21 & Tools
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21 all
+          sudo apt-get install -y cmake ninja-build llvm-21-dev libclang-21-dev
+
+      - name: Fix LLVM 21 Header Conflict
+        run: |
+          echo "Removing conflicting cxxabi headers from LLVM include dir..."
+          sudo rm -f /usr/lib/llvm-21/include/cxxabi.h
+          sudo rm -f /usr/lib/llvm-21/include/__cxxabi_config.h
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTS=OFF \
+          -DENABLE_SANITIZERS=OFF \
+          -DLLVM_DIR=/usr/lib/llvm-21/lib/cmake/llvm
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Create Archive
+        run: |
+          ASSET_NAME="hadron-${{ github.ref_name }}-linux-x86_64"
+          mkdir -p dist/$ASSET_NAME
+
+          cp build/hadronc dist/$ASSET_NAME
+          cp LICENSE dist/$ASSET_NAME
+          cp README.md dist/$ASSET_NAME
+
+          cd dist
+          tar -czvf $ASSET_NAME.tar.gz $ASSET_NAME/
+
+      - name: Create Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
