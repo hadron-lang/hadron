@@ -275,6 +275,16 @@ namespace hadron::frontend {
 					const auto right = analyze_expr(*e.right);
 					if (!left || !right)
 						return std::nullopt;
+					if (e.op.type == TokenType::Plus) {
+						if (std::holds_alternative<PointerType>(left->kind) && is_integer_type(*right))
+							return *left;
+						if (is_integer_type(*left) && std::holds_alternative<PointerType>(right->kind))
+							return *right;
+					}
+					if (e.op.type == TokenType::Minus) {
+						if (std::holds_alternative<PointerType>(left->kind) && is_integer_type(*right))
+							return *left;
+					}
 					if (!are_types_equal(*left, *right)) {
 						error(e.op, "Type mismatch in binary expression.");
 						return std::nullopt;

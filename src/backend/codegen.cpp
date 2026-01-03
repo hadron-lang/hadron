@@ -540,6 +540,13 @@ namespace hadron::backend {
 							ptr = gen_addr(*e.left);
 							if (ptr && e.left->type_cache)
 								destType = get_llvm_type(*e.left->type_cache);
+						} else if (std::holds_alternative<frontend::UnaryExpr>(e.left->kind)) {
+							if (const auto &[op, right] = std::get<frontend::UnaryExpr>(e.left->kind);
+								op.type == frontend::TokenType::Star) {
+								ptr = gen_addr(*e.left);
+								if (ptr && e.left->type_cache)
+									destType = get_llvm_type(*e.left->type_cache);
+							}
 						}
 
 						if (!ptr || !destType) {
@@ -570,8 +577,32 @@ namespace hadron::backend {
 
 					switch (e.op.type) {
 					case frontend::TokenType::Plus:
+						if (L->getType()->isPointerTy() && R->getType()->isIntegerTy()) {
+							if (!e.left->type_cache ||
+								!std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind))
+								return nullptr;
+							llvm::Type *elmTy =
+								get_llvm_type(*std::get<frontend::PointerType>(e.left->type_cache->kind).inner);
+							return builder_->CreateGEP(elmTy, L, R, "ptr_add");
+						}
+						if (L->getType()->isIntegerTy() && R->getType()->isPointerTy()) {
+							if (!e.right->type_cache ||
+								!std::holds_alternative<frontend::PointerType>(e.right->type_cache->kind))
+								return nullptr;
+							llvm::Type *elmTy =
+								get_llvm_type(*std::get<frontend::PointerType>(e.right->type_cache->kind).inner);
+							return builder_->CreateGEP(elmTy, R, L, "ptr_add");
+						}
 						return builder_->CreateAdd(L, R, "addtmp");
 					case frontend::TokenType::Minus:
+						if (L->getType()->isPointerTy() && R->getType()->isIntegerTy()) {
+							if (!e.left->type_cache ||
+								!std::holds_alternative<frontend::PointerType>(e.left->type_cache->kind))
+								return nullptr;
+							llvm::Type *elmTy =
+								get_llvm_type(*std::get<frontend::PointerType>(e.left->type_cache->kind).inner);
+							return builder_->CreateGEP(elmTy, L, builder_->CreateNeg(R), "ptr_sub");
+						}
 						return builder_->CreateSub(L, R, "subtmp");
 					case frontend::TokenType::Star:
 						return builder_->CreateMul(L, R, "multmp");
