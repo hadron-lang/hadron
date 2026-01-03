@@ -1,7 +1,3 @@
-Based on the project configuration files and source code provided, here is a strictly technical `README.md` without examples or emojis.
-
----
-
 # Hadron
 
 Hadron is a statically typed system programming language compiler targeting the LLVM backend. It supports C++23 standards and utilizes LLVM 21 for code generation.
