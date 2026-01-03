@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: Ask a question
+    url: https://github.com/hadron-lang/hadron/discussions
+    about: Please ask usage questions in GitHub Discussions.
+
+  - name: Report a security vulnerability
+    url: https://github.com/hadron-lang/hadron/security/policy
+    about: Please do not report security vulnerabilities in public issues.
