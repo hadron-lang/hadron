@@ -28,6 +28,12 @@ jobs:
           sudo ./llvm.sh 21 all
           sudo apt-get install -y cmake ninja-build libgtest-dev llvm-21-dev libclang-21-dev
 
+      - name: Fix LLVM 21 Header Conflict
+        run: |
+          echo "Removing conflicting cxxabi headers from LLVM include dir..."
+          sudo rm -f /usr/lib/llvm-21/include/cxxabi.h
+          sudo rm -f /usr/lib/llvm-21/include/__cxxabi_config.h
+
       - name: Configure CMake
         run: |
           cmake -B build -G Ninja \
