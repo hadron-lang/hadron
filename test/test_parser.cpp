@@ -48,11 +48,6 @@ TEST(ParserTest, HandlesModuleAndImports) {
 	EXPECT_EQ(unit.imports[1].alias->text, "m");
 }
 
-TEST(ParserTest, RejectsTopLevelStatements) {
-	const CompilationUnit unit = parse_source("module test; var x = 1;");
-	EXPECT_EQ(unit.declarations.size(), 0);
-}
-
 TEST(ParserTest, HandlesSimpleExpression) {
 	const CompilationUnit unit = parse_source("module test; fx main() { 1 + 2; }");
 	const auto &stmt = get_first_stmt_of_main(unit);

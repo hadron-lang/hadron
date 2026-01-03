@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
@@ -217,8 +219,11 @@ namespace hadron::backend {
 				},
 				[&](const frontend::VarDeclStmt &s) {
 					TRACE("Gen Var: " << s.name.text);
+					const bool isGlobal = (builder_->GetInsertBlock() == nullptr);
+
 					llvm::Value *initVal;
 					if (s.initializer)
+						// todo: for a global var, initVal need to be a constant (Literal)
 						initVal = gen_expr(*s.initializer);
 					else
 						initVal = llvm::ConstantInt::get(*context_, llvm::APInt(32, 0));
@@ -231,14 +236,54 @@ namespace hadron::backend {
 
 					llvm::Type *varType = initVal->getType();
 					if (s.type_annotation) {
-						varType = get_llvm_type(*s.type_annotation);
-						if (initVal->getType() != varType)
-							initVal = builder_->CreateIntCast(initVal, varType, false);
+						if (llvm::Type *annotType = get_llvm_type(*s.type_annotation); varType != annotType) {
+							if (isGlobal) {
+								if (auto *c = llvm::dyn_cast<llvm::Constant>(initVal)) {
+									if (annotType->isIntegerTy() && varType->isIntegerTy()) {
+										// todo: other constants casts (float, ptr...)
+										const unsigned srcBits = varType->getIntegerBitWidth();
+										if (const unsigned dstBits = annotType->getIntegerBitWidth(); srcBits > dstBits)
+											initVal =
+												llvm::ConstantExpr::getCast(llvm::Instruction::Trunc, c, annotType);
+										else if (srcBits < dstBits)
+											initVal =
+												llvm::ConstantExpr::getCast(llvm::Instruction::SExt, c, annotType);
+									}
+									varType = annotType;
+								} else {
+									std::cerr << "CodeGen Error: Global initializer must be constant.\n";
+									return;
+								}
+							} else {
+								varType = annotType;
+								if (initVal->getType() != varType)
+									initVal = builder_->CreateIntCast(initVal, varType, false);
+							}
+						}
 					}
-					llvm::Function *func = builder_->GetInsertBlock()->getParent();
-					llvm::AllocaInst *alloca = create_entry_block_alloca(func, std::string(s.name.text), varType);
-					builder_->CreateStore(initVal, alloca);
-					named_values_[std::string(s.name.text)] = alloca;
+
+					if (isGlobal) {
+						auto *constInit = llvm::dyn_cast<llvm::Constant>(initVal);
+						if (!constInit) {
+							std::cerr << "CodeGen Error: Global variable '" << s.name.text
+									  << "' needs a constant initializer.\n";
+							return;
+						}
+
+						new llvm::GlobalVariable(
+							*module_,
+							varType,
+							!s.is_mutable,
+							llvm::GlobalValue::ExternalLinkage,
+							constInit,
+							std::string(s.name.text)
+						);
+					} else {
+						llvm::Function *func = builder_->GetInsertBlock()->getParent();
+						llvm::AllocaInst *alloca = create_entry_block_alloca(func, std::string(s.name.text), varType);
+						builder_->CreateStore(initVal, alloca);
+						named_values_[std::string(s.name.text)] = alloca;
+					}
 				},
 				[&](const frontend::ReturnStmt &s) {
 					if (s.value) {
@@ -380,7 +425,7 @@ namespace hadron::backend {
 			overloaded{
 				[&](const frontend::LiteralExpr &e) -> llvm::Value * {
 					if (e.value.type == frontend::TokenType::Number)
-						return llvm::ConstantInt::get(*context_, llvm::APInt(64, e.value.text, 10));
+						return llvm::ConstantInt::get(*context_, llvm::APInt(32, e.value.text, 10));
 					if (e.value.type == frontend::TokenType::String) {
 						const std::string_view raw = e.value.text.substr(1, e.value.text.size() - 2);
 						const std::string content = resolve_escapes(raw);
@@ -394,12 +439,16 @@ namespace hadron::backend {
 				},
 				[&](const frontend::VariableExpr &e) -> llvm::Value * {
 					const std::string name = std::string(e.name.text);
-					llvm::AllocaInst *alloca = named_values_[name];
-					if (!alloca) {
-						std::cerr << "CodeGen Error: Unknown variable " << name << "\n";
-						return nullptr;
+					if (named_values_.contains(name)) {
+						llvm::AllocaInst *alloca = named_values_[name];
+						return builder_->CreateLoad(alloca->getAllocatedType(), alloca, name.c_str());
 					}
-					return builder_->CreateLoad(alloca->getAllocatedType(), alloca, name.c_str());
+
+					if (llvm::GlobalVariable *gVar = module_->getNamedGlobal(name))
+						return builder_->CreateLoad(gVar->getValueType(), gVar, name.c_str());
+
+					std::cerr << "CodeGen Error: Unknown variable " << name << "\n";
+					return nullptr;
 				},
 				[&](const frontend::UnaryExpr &e) -> llvm::Value * {
 					switch (e.op.type) {
@@ -475,10 +524,13 @@ namespace hadron::backend {
 						llvm::Type *destType = nullptr;
 
 						if (std::holds_alternative<frontend::VariableExpr>(e.left->kind)) {
-							const auto &[name] = std::get<frontend::VariableExpr>(e.left->kind);
-							if (const auto alloca = named_values_[std::string(name.text)]) {
-								ptr = alloca;
-								destType = alloca->getAllocatedType();
+							ptr = gen_addr(*e.left);
+							if (ptr) {
+								if (const auto *alloca = llvm::dyn_cast<llvm::AllocaInst>(ptr)) {
+									destType = alloca->getAllocatedType();
+								} else if (const auto *global = llvm::dyn_cast<llvm::GlobalVariable>(ptr)) {
+									destType = global->getValueType();
+								}
 							}
 						} else if (std::holds_alternative<frontend::GetExpr>(e.left->kind)) {
 							ptr = gen_addr(*e.left);
@@ -629,6 +681,9 @@ namespace hadron::backend {
 					const std::string name = std::string(e.name.text);
 					if (named_values_.contains(name))
 						return named_values_[name];
+
+					if (llvm::GlobalVariable *gVar = module_->getNamedGlobal(name))
+						return gVar;
 					std::cerr << "CodeGen Error: Unknown variable '" << name << "'\n";
 					return nullptr;
 				},

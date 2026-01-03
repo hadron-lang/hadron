@@ -107,6 +107,8 @@ namespace hadron::frontend {
 		}
 		if (match({TokenType::KwFx}))
 			return function_declaration(false);
+		if (match({TokenType::KwVar, TokenType::KwVal}))
+			return var_declaration();
 		if (check(TokenType::KwStruct))
 			return struct_declaration();
 		if (check(TokenType::KwEnum))
