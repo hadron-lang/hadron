@@ -5,13 +5,18 @@
 #include "scope.hpp"
 
 namespace hadron::frontend {
+	struct SemanticError {
+		Token token;
+		std::string message;
+	};
+
 	class Semantic {
 		TypeTable types;
 
 		CompilationUnit &unit_;
 		Scope::Ptr global_scope_;
 		Scope::Ptr current_scope_;
-		std::vector<std::string> errors_;
+		std::vector<SemanticError> errors_;
 		const FunctionDecl *current_func_ = nullptr;
 
 		void enter_scope();
@@ -32,7 +37,7 @@ namespace hadron::frontend {
 
 		[[nodiscard]] bool analyze();
 
-		[[nodiscard]] const std::vector<std::string> &errors() const {
+		[[nodiscard]] const std::vector<SemanticError> &errors() const {
 			return errors_;
 		}
 	};

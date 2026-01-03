@@ -1,5 +1,4 @@
 #include "frontend/semantic.hpp"
-#include <iostream>
 #include <memory>
 #include <variant>
 
@@ -75,9 +74,9 @@ namespace hadron::frontend {
 	}
 
 	void Semantic::error(const Token &token, const std::string &message) {
-		char *err = static_cast<char *>(__builtin_alloca(512));
+		char *err = static_cast<char *>(__builtin_alloca(256));
 		snprintf(err, 512, "%d:%d Semantic Error: %s", token.location.line, token.location.column, message.c_str());
-		errors_.emplace_back(err);
+		errors_.push_back({token, std::string(err)});
 	}
 
 	Type Semantic::resolve_type(const Type &t) {

@@ -109,7 +109,7 @@ int main(const int argc, char **argv) {
 		if (hadron::frontend::Semantic semantic(unit); !semantic.analyze()) {
 			std::print(stderr, "Semantic errors:\n");
 			for (const auto &err : semantic.errors()) {
-				std::cerr << "	" << err << "\n";
+				std::cerr << "	" << err.message << "\n";
 			}
 			llvm::llvm_shutdown();
 			return 1;

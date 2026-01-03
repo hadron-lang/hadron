@@ -16,9 +16,9 @@ Semantic get_semantic_analysis(const std::string_view source) {
 	return sem;
 }
 
-bool has_error(const std::vector<std::string> &errors, const std::string &partial) {
+bool has_error(const std::vector<hadron::frontend::SemanticError> &errors, const std::string &partial) {
 	for (const auto &err : errors) {
-		if (err.find(partial) != std::string::npos)
+		if (err.message.find(partial) != std::string::npos)
 			return true;
 	}
 	return false;
@@ -27,7 +27,7 @@ bool has_error(const std::vector<std::string> &errors, const std::string &partia
 TEST(SemanticTest, DetectsUndefinedVariable) {
 	const auto sem = get_semantic_analysis("module my.app; fx main() i32 { return x; }");
 	ASSERT_FALSE(sem.errors().empty());
-	EXPECT_TRUE(sem.errors()[0].find("Undefined variable 'x'") != std::string::npos);
+	EXPECT_TRUE(sem.errors()[0].message.find("Undefined variable 'x'") != std::string::npos);
 }
 
 TEST(SemanticTest, HandlesVariableDeclaration) {
@@ -38,7 +38,7 @@ TEST(SemanticTest, HandlesVariableDeclaration) {
 TEST(SemanticTest, DetectsShadowingOrRedefinition) {
 	const auto sem = get_semantic_analysis("module my.app; fx main() i32 { val x = 1; val x = 2; return x; }");
 	ASSERT_FALSE(sem.errors().empty());
-	EXPECT_TRUE(sem.errors()[0].find("already declared") != std::string::npos);
+	EXPECT_TRUE(sem.errors()[0].message.find("already declared") != std::string::npos);
 }
 
 TEST(SemanticTest, HandlesBlockScopes) {
