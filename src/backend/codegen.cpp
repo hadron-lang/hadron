@@ -434,7 +434,7 @@ namespace hadron::backend {
 					if (e.value.type == frontend::TokenType::Number)
 						return llvm::ConstantInt::get(*context_, llvm::APInt(32, e.value.text, 10));
 					if (e.value.type == frontend::TokenType::String) {
-						const std::string_view raw = e.value.text.substr(1, e.value.text.size() - 2);
+						const std::string_view raw = e.value.text;
 						const std::string content = resolve_escapes(raw);
 						return builder_->CreateGlobalString(content);
 					}
@@ -724,16 +724,14 @@ namespace hadron::backend {
 							return builder_->CreateGEP(elmTy, R, L, "ptr_add");
 						}
 
-						// integer + integer (overflow)
 						else if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
-
 							llvm::Function *sadd = llvm::Intrinsic::getOrInsertDeclaration(
 								module_.get(), llvm::Intrinsic::sadd_with_overflow, {L->getType()}
 							);
 							llvm::Value *res = builder_->CreateCall(sadd, {L, R}, "add_with_overflow");
-							llvm::Value *val = builder_->CreateExtractValue(res, 0, "sum");			  // result
-							llvm::Value *overflow = builder_->CreateExtractValue(res, 1, "overflow"); // i1 flag
-							save_overflow_flag(overflow); // store somewhere the current op’s overflow
+							llvm::Value *val = builder_->CreateExtractValue(res, 0, "sum");
+							llvm::Value *overflow = builder_->CreateExtractValue(res, 1, "overflow");
+							save_overflow_flag(overflow);
 							return val;
 						}
 
@@ -878,35 +876,29 @@ namespace hadron::backend {
 					llvm::BasicBlock *mainBB = builder_->GetInsertBlock();
 					llvm::Function *func = mainBB->getParent();
 
-					llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "else", func);
+					llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*context_, "elseexpr", func);
 					llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*context_, "merge", func);
 
 					builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
+					builder_->SetInsertPoint(elseBB);
 
-					if (!overflow_flag_)
-						return nullptr;
+					llvm::Value *elseVal = nullptr;
 
 					if (std::holds_alternative<std::unique_ptr<frontend::Expr>>(e.else_variant)) {
-						builder_->CreateCondBr(overflow_flag_, elseBB, mergeBB);
-
-						builder_->SetInsertPoint(elseBB);
-						llvm::Value *elseVal = gen_expr(*std::get<std::unique_ptr<frontend::Expr>>(e.else_variant));
-						builder_->CreateBr(mergeBB);
-
-						builder_->SetInsertPoint(mergeBB);
-						llvm::PHINode *phi = builder_->CreatePHI(mainVal->getType(), 2, "elsetmp");
-						phi->addIncoming(mainVal, mainBB);
-						phi->addIncoming(elseVal, elseBB);
-						return phi;
+						elseVal = gen_expr(*std::get<std::unique_ptr<frontend::Expr>>(e.else_variant));
 					} else {
-						builder_->SetInsertPoint(elseBB);
 						for (auto &stmt : std::get<std::vector<frontend::Stmt>>(e.else_variant)) {
 							gen_stmt(stmt);
 						}
-						builder_->CreateBr(mergeBB);
-						builder_->SetInsertPoint(mergeBB);
-						return mainVal;
+						elseVal = mainVal;
 					}
+					builder_->CreateBr(mergeBB);
+
+					builder_->SetInsertPoint(mergeBB);
+					auto *phi = builder_->CreatePHI(mainVal->getType(), 2, "elseexpr_tmp");
+					phi->addIncoming(mainVal, mainBB);
+					phi->addIncoming(elseVal, elseBB);
+					return phi;
 				},
 				[](const auto &) -> llvm::Value * { return nullptr; }
 			},
