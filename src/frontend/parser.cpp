@@ -462,7 +462,22 @@ namespace hadron::frontend {
 
 	Stmt Parser::expression_statement() {
 		Expr expr = expression();
-		consume(TokenType::Semicolon, "Expect ';' after expression.");
+
+		// ElseExpr with block variant ends with '}', semicolon is optional
+		bool ends_with_brace = false;
+		if (std::holds_alternative<ElseExpr>(expr.kind)) {
+			const auto &else_expr = std::get<ElseExpr>(expr.kind);
+			if (std::holds_alternative<std::vector<Stmt>>(else_expr.else_variant)) {
+				ends_with_brace = true;
+			}
+		}
+
+		if (ends_with_brace) {
+			match({TokenType::Semicolon}); // optional
+		} else {
+			consume(TokenType::Semicolon, "Expect ';' after expression.");
+		}
+
 		return Stmt{ExpressionStmt{std::move(expr)}};
 	}
 
