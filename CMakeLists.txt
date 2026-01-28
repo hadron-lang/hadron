@@ -20,6 +20,10 @@ else ()
             scalaropts instcombine ipo passes)
 endif ()
 
+include(FetchContent)
+FetchContent_Declare(nlohmann_json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_MakeAvailable(nlohmann_json)
+
 if (MSVC)
     set(HADRON_FLAGS /W4 /WX /permissive-)
 else ()
@@ -42,6 +46,10 @@ target_link_libraries(hadron_core PUBLIC ${llvm_libs})
 add_executable(hadronc "src/main.cpp")
 target_link_libraries(hadronc PRIVATE hadron_core ${llvm_libs})
 target_compile_options(hadronc PRIVATE ${HADRON_FLAGS})
+
+add_executable(hadron_lsp "src/lsp/server.cpp")
+target_link_libraries(hadron_lsp PRIVATE hadron_core nlohmann_json::nlohmann_json)
+target_compile_options(hadron_lsp PRIVATE ${HADRON_FLAGS})
 
 if (BUILD_TESTS)
     include(FetchContent)
